@@ -1,6 +1,7 @@
 /* SAM-Magangué · página de inicio: regla limnimétrica animada y acceso de demostración */
 (function(){
   "use strict";
+  var tema=new URLSearchParams(location.search).get("tema");if(tema)document.documentElement.setAttribute("data-theme",tema);
   /* ---------- Regla limnimétrica (6,0 a 11,0 m) ---------- */
   var MIN=6,MAX=11,Y0=360,Y1=20; // y para MIN y MAX
   var Y=function(h){return Y0-(h-MIN)*(Y0-Y1)/(MAX-MIN)};

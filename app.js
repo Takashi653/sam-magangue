@@ -1456,6 +1456,13 @@ function App() {
   const CAP = Q.get("captura") === "1";
   const [user, setUser] = useState(() => {
     if (CAP) {
+      if (Q.get("rol") === "ciudadano") return {
+        usuario: "ejemplo",
+        nombre: "Ciudadana de ejemplo",
+        rol: "Ciudadano",
+        barrio: "nv",
+        canal: "sms"
+      };
       const {
         clave,
         ...s

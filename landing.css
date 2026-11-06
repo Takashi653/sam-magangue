@@ -19,6 +19,7 @@
 :root[data-theme="dark"]{--fondo:#0c1a1f;--papel:#122429;--tinta:#e3eeee;--suave:#9db2b5;--linea:#24393e;--rio:#2c7f9c;--rio-claro:#6fb8d1;color-scheme:dark}
 
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{margin:0;background:var(--fondo);color:var(--tinta);font:17px/1.6 var(--f-texto)}
