@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAM-Magangué Prototipo</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--ink:#1d2733;--mute:#5d6b7a;--line:#d9e0e8;--pri:#1f4e79;--pri2:#2e75b6;
+--verde:#2e7d32;--amarilla:#f2b705;--naranja:#e8710a;--roja:#c62828;--rio:#7fb3e0;--tierra:#eef0e4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11161d;--card:#1a212b;--ink:#e6edf3;--mute:#9aa8b6;--line:#2c3644;--pri:#7fb0e0;--pri2:#5a9ad6;--rio:#2c5d8a;--tierra:#1f2a22}}
+:root[data-theme="dark"]{--bg:#11161d;--card:#1a212b;--ink:#e6edf3;--mute:#9aa8b6;--line:#2c3644;--pri:#7fb0e0;--pri2:#5a9ad6;--rio:#2c5d8a;--tierra:#1f2a22}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,Arial,sans-serif}
+button,input,select{font:inherit}
+.top{background:#1f4e79;color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.top h1{font-size:17px;margin:0}.top .sub{opacity:.8;font-size:12px}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.tab{border:1px solid var(--line);background:transparent;color:var(--ink);padding:6px 12px;border-radius:8px;cursor:pointer}
+.tab.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+main{padding:16px;max-width:1280px;margin:0 auto}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:2fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0}
+.card h2{font-size:15px;margin:0 0 8px}.card h3{font-size:13px;margin:10px 0 6px;color:var(--mute)}
+.kpi{font-size:22px;font-weight:700}.lbl{font-size:12px;color:var(--mute)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-weight:700;color:#fff}
+.b-verde{background:var(--verde)}.b-amarilla{background:var(--amarilla);color:#222}.b-naranja{background:var(--naranja)}.b-roja{background:var(--roja)}
+.btn{background:var(--pri2);color:#fff;border:0;border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn.sec{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;font-size:12.5px}th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left}th{color:var(--mute);font-weight:600}
+.ok{color:var(--verde);font-weight:700}.no{color:var(--roja);font-weight:700}
+.scroll{overflow:auto;max-height:340px}
+.phone{width:200px;border:8px solid #222;border-radius:24px;padding:10px;background:#0e1a26;color:#fff;min-height:300px}
+.notif{background:#ffffffee;color:#111;border-radius:10px;padding:8px;margin:6px 0;font-size:12px}
+.sms{background:#2b3a4a;border-radius:10px;padding:8px;margin:6px 0;font-size:12px}
+.login{max-width:380px;margin:8vh auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+.login input{width:100%;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);margin:4px 0 12px}
+.hint{background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:8px;font-size:12px;color:var(--mute)}
+input[type=number],select,textarea{padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+.small{font-size:12px;color:var(--mute)}
+.log{font-family:Consolas,monospace;font-size:11.5px;max-height:220px;overflow:auto;background:var(--bg);border-radius:8px;padding:8px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script type="text/babel" data-presets="react">
+const {useState,useEffect,useMemo,useRef} = React;
+
+/* ===================== MOTOR DE SIMULACIÓN (independiente de la interfaz) ===================== */
+// Generador pseudoaleatorio con semilla (resultados reproducibles)
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function gauss(r){let u=0;while(!u)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+const DT_MIN=10;               // una lectura cada 10 min (Tabla 4, Etapa 3)
+const N_STEPS=72*6+1;          // 72 horas de simulación
+const NIVELES=["verde","amarilla","naranja","roja"];
+const TXT={verde:"Normal",amarilla:"Alerta amarilla",naranja:"Alerta naranja",roja:"Alerta roja"};
+const ICO={verde:"✔",amarilla:"⚠",naranja:"⚠",roja:"⛔"};
+
+const DEF_CFG={hAm:8.0,hNa:9.0,hRo:10.0,tmin:6,confirm:1,histeresis:0.15,
+  rate:50,colas:"paralelo",pPush:0.85,pSms:0.95,pVoz:0.60,retries:3,ackWait:300,
+  sigma:0.01,pFalla:0.02};
+
+// Escenarios hidrológicos: tramos [hora_fin, tasa m/h]
+const ESCENARIOS={
+  creciente:{nombre:"Creciente (llega a roja)",h0:7.40,tramos:[[12,0.02],[48,0.06],[60,0.03],[72,-0.02]]},
+  falsa:{nombre:"Subida que se detiene",h0:7.60,tramos:[[11,0.09],[16,0.01],[72,-0.03]]},
+  normal:{nombre:"Nivel normal con ruido",h0:6.80,tramos:[[72,0]],onda:0.15},
+};
+
+// E1: serie de nivel del río con ruido y fallas de sensor
+function generarSerie(escKey,cfg,seed,jitter=0){
+  const r=rng(seed),e=ESCENARIOS[escKey];
+  const f=1+jitter*(r()*2-1), h0=e.h0+jitter*0.5*(r()*2-1);
+  const real=[],obs=[];let h=h0;
+  for(let i=0;i<N_STEPS;i++){
+    const t=i*DT_MIN/60;
+    if(i>0){const tr=e.tramos.find(x=>t<=x[0])||e.tramos[e.tramos.length-1];h+=tr[1]*f*DT_MIN/60;}
+    const hv=h+(e.onda?e.onda*Math.sin(2*Math.PI*t/24):0);
+    real.push(hv);
+    let o=hv+gauss(r)*cfg.sigma;
+    const u=r();
+    if(u<cfg.pFalla/3)o=null;              // sensor sin dato
+    else if(u<2*cfg.pFalla/3)o=-1;         // valor fuera de rango
+    else if(u<cfg.pFalla)o=hv+3+r()*5;     // pico espurio
+    obs.push(o==null?null:Math.round(o*1000)/1000);
+  }
+  return {real,obs};
+}
+
+// P1 + P2: validación, tasa de cambio, tiempo a umbral y clasificación con histéresis
+function procesar(obs,cfg){
+  const out=[];let ultimo=null,nivel=0,cand=0,candCnt=0,bajaCnt=0;const val=[];
+  const U=[cfg.hAm,cfg.hNa,cfg.hRo];
+  for(let i=0;i<obs.length;i++){
+    const o=obs[i];let valido=true,motivo="";
+    if(o==null){valido=false;motivo="sin dato"}
+    else if(o<0||o>15){valido=false;motivo="fuera de rango [0,15] m"}
+    else if(ultimo!=null&&Math.abs(o-ultimo)>0.5){valido=false;motivo="salto > 0,5 m en 10 min"}
+    if(valido)ultimo=o;
+    val.push(ultimo);
+    const h=ultimo;
+    const j=Math.max(0,i-6);                       // ventana de 1 h (6 lecturas)
+    const dhdt=(i>=6&&h!=null&&val[j]!=null)?(h-val[j])/1:0;
+    const tU=U.map(u=>h>=u?0:(dhdt>0?(u-h)/dhdt:Infinity));
+    let obj=0;
+    for(let k=0;k<3;k++){if(h>=U[k]||tU[k]<=cfg.tmin)obj=k+1;}
+    // confirmación de subida (n lecturas consecutivas) e histéresis de bajada
+    if(obj>nivel){ if(obj===cand)candCnt++;else{cand=obj;candCnt=1}
+      if(candCnt>=cfg.confirm){nivel=obj;candCnt=0;bajaCnt=0} }
+    else{cand=0;candCnt=0}
+    if(obj<nivel){const lim=U[nivel-1]-cfg.histeresis;const tr=tU[nivel-1];
+      if(h<lim&&tr>cfg.tmin){bajaCnt++;if(bajaCnt>=3){nivel=obj;bajaCnt=0}}else bajaCnt=0}
+    out.push({i,t:i*DT_MIN/60,obs:o,valido,motivo,h,dhdt,tAm:tU[0],tNa:tU[1],tRo:tU[2],nivel});
+  }
+  return out;
+}
+
+// Población por barrio (Np = 40 000; H = 10 526 hogares, Etapa 3)
+const BARRIOS=[{id:"gir",nombre:"Girardot",hogares:4210},{id:"nv",nombre:"Nueva Venecia",hogares:3580},
+  {id:"bar",nombre:"Baracoa",hogares:1500},{id:"sc",nombre:"Santa Coita",hogares:1236}];
+const PERFILES=[{id:"smart",p:0.68,canales:["push","sms"],retry:["push","sms","voz"]},
+  {id:"basico",p:0.27,canales:["sms","voz"],retry:["sms","voz"]},
+  {id:"sin",p:0.05,canales:["voz"],retry:["voz"]}];
+
+// P4: gestor de notificaciones con colas, acuse y reintentos
+function simularDifusion(cfg,seed,nivel="naranja"){
+  const r=rng(seed);const H=BARRIOS.reduce((a,b)=>a+b.hogares,0);
+  const P={push:cfg.pPush,sms:cfg.pSms,voz:cfg.pVoz};
+  const DL={push:[2,30],sms:[10,120],voz:[20,90]};
+  const tIngesta=10+r()*50,tEval=0.2+r()*4.8,tEnc=r()*5;  // presupuesto de latencia (Cálculo 6)
+  const t0=tIngesta+tEval+tEnc;
+  const hog=[];for(let k=0;k<H;k++){const u=r();let acc=0,pf=PERFILES[2];for(const p of PERFILES){acc+=p.p;if(u<acc){pf=p;break}}hog.push({pf,alc:Infinity,canal:null})}
+  const lat={push:[],sms:[],voz:[]};let msgs=0,ultimoEnvio=0;const porRonda=[];
+  for(let ronda=0;ronda<=cfg.retries;ronda++){
+    const base=ronda*cfg.ackWait;const pos={push:0,sms:0,voz:0,all:0};
+    const pend=hog.filter(x=>x.alc===Infinity);if(!pend.length)break;
+    for(const x of pend){
+      const cs=ronda===0?x.pf.canales:x.pf.retry;
+      for(const c of cs){
+        const q=cfg.colas==="paralelo"?pos[c]++:pos.all++;
+        const tEnvio=t0+base+q/cfg.rate;msgs++;if(ronda===0)ultimoEnvio=Math.max(ultimoEnvio,tEnvio);
+        if(r()<P[c]){const d=DL[c][0]+r()*(DL[c][1]-DL[c][0]);const tl=tEnvio+d;
+          if(ronda===0)lat[c].push(tl);
+          if(tl<x.alc){x.alc=tl;x.canal=c}}
+      }
+    }
+    porRonda.push(hog.filter(x=>x.alc<Infinity).length/H);
+  }
+  const alc=hog.filter(x=>x.alc<Infinity);
+  const pct=(a,p)=>{if(!a.length)return NaN;const s=[...a].sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor(p*s.length))]};
+  const t5=alc.map(x=>x.alc);
+  return {H,msgs,t0,difusion:ultimoEnvio,entrega1:porRonda[0],entregaFinal:alc.length/H,porRonda,
+    pushP50:pct(lat.push,0.5),pushP95:pct(lat.push,0.95),smsP50:pct(lat.sms,0.5),smsP95:pct(lat.sms,0.95),
+    alcanzados5min:t5.filter(t=>t<=300).length/H,
+    porCanal:{push:alc.filter(x=>x.canal==="push").length,sms:alc.filter(x=>x.canal==="sms").length,voz:alc.filter(x=>x.canal==="voz").length},
+    porPerfil:PERFILES.map(p=>{const g=hog.filter(x=>x.pf===p);return{id:p.id,n:g.length,alc:g.filter(x=>x.alc<Infinity).length/g.length}})};
+}
+
+// Evaluación de una corrida completa (detección + anticipación + falsos positivos)
+function evaluarCorrida(escKey,cfg,seed,jitter){
+  const {real,obs}=generarSerie(escKey,cfg,seed,jitter);const res=procesar(obs,cfg);
+  const cruce=(u)=>{const k=real.findIndex(h=>h>=u);return k<0?null:k*DT_MIN/60};
+  const primera=(n)=>{const k=res.findIndex(x=>x.nivel>=n);return k<0?null:k*DT_MIN/60};
+  const tc9=cruce(cfg.hNa),ta9=primera(2),tc10=cruce(cfg.hRo),ta10=primera(3);
+  const invalidas=res.filter(x=>!x.valido).length;
+  const falsasLect=res.filter((x,i)=>x.valido&&false).length;
+  const maxReal=Math.max(...real);
+  return {esc:escKey,seed,maxReal,tc9,ta9,antic9:(tc9!=null&&ta9!=null)?tc9-ta9:null,
+    tc10,ta10,antic10:(tc10!=null&&ta10!=null)?tc10-ta10:null,
+    fpNaranja:ta9!=null&&tc9==null,fnNaranja:tc9!=null&&ta9==null,
+    invalidas,filtradas:invalidas,errMax:Math.max(...res.map((x,i)=>x.h==null?0:Math.abs(x.h-real[i])))};
+}
+
+/* ===================== COMPONENTES DE INTERFAZ ===================== */
+const fmt=(x,d=2)=>x==null||!isFinite(x)?"—":Number(x).toFixed(d).replace(".",",");
+const fmtH=(x)=>x==null||!isFinite(x)?"> 72 h":fmt(x,1)+" h";
+
+function Grafico({serie,real,cfg,hasta,alto=230}){
+  const W=760,H=alto,pl=40,pr=10,pt=10,pb=24;
+  const ys=[...real,cfg.hRo+0.3,6.4];const ymin=Math.floor(Math.min(...ys.filter(v=>v!=null))*2)/2,ymax=Math.ceil(Math.max(...ys.filter(v=>v!=null))*2)/2;
+  const X=i=>pl+(W-pl-pr)*i/(N_STEPS-1),Y=v=>pt+(H-pt-pb)*(1-(v-ymin)/(ymax-ymin));
+  const path=(arr)=>arr.slice(0,hasta+1).map((v,i)=>v==null?"":`${i&&arr[i-1]!=null?"L":"M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
+  const col={1:"var(--amarilla)",2:"var(--naranja)",3:"var(--roja)"};
+  const bandas=[];let ini=0;
+  for(let i=1;i<=hasta+1;i++){if(i===hasta+1||serie[i].nivel!==serie[ini].nivel){if(serie[ini].nivel>0)bandas.push(<rect key={ini} x={X(ini)} y={pt} width={X(i-1)-X(ini)+1} height={H-pt-pb} fill={col[serie[ini].nivel]} opacity=".14"/>);ini=i}}
+  const ticks=[];for(let v=ymin;v<=ymax+1e-9;v+=0.5)ticks.push(v);
+  return <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Nivel del río en el tiempo">
+    {bandas}
+    {ticks.map(v=><g key={v}><line x1={pl} x2={W-pr} y1={Y(v)} y2={Y(v)} stroke="var(--line)"/><text x={pl-4} y={Y(v)+4} fontSize="10" textAnchor="end" fill="var(--mute)">{fmt(v,1)}</text></g>)}
+    {[0,12,24,36,48,60,72].map(h=><text key={h} x={X(h*6)} y={H-6} fontSize="10" textAnchor="middle" fill="var(--mute)">{h} h</text>)}
+    {[[cfg.hAm,"amarilla"],[cfg.hNa,"naranja"],[cfg.hRo,"roja"]].map(([u,c])=><g key={c}><line x1={pl} x2={W-pr} y1={Y(u)} y2={Y(u)} stroke={`var(--${c})`} strokeDasharray="5 4" strokeWidth="1.5"/><text x={W-pr-2} y={Y(u)-3} fontSize="10" textAnchor="end" fill={`var(--${c})`}>{c} {fmt(u,1)} m</text></g>)}
+    <path d={path(real)} fill="none" stroke="var(--mute)" strokeWidth="1" strokeDasharray="2 3"/>
+    <path d={path(serie.map(s=>s.h))} fill="none" stroke="var(--pri2)" strokeWidth="2.2"/>
+    {serie.slice(0,hasta+1).map((s,i)=>!s.valido&&<circle key={i} cx={X(i)} cy={pt+6} r="3" fill="var(--roja)"><title>Lectura descartada: {s.motivo}</title></circle>)}
+    <line x1={X(hasta)} x2={X(hasta)} y1={pt} y2={H-pb} stroke="var(--ink)" strokeWidth=".8"/>
+  </svg>;
+}
+
+function Mapa({nivel,barriosAfect}){
+  const c={0:"#7cb87f",1:"#f2c94c",2:"#f2994a",3:"#eb5757"};
+  const B=[{id:"gir",x:250,y:70,w:150,h:70},{id:"nv",x:420,y:80,w:150,h:65},{id:"bar",x:300,y:160,w:130,h:60},{id:"sc",x:120,y:170,w:120,h:55}];
+  return <svg viewBox="0 0 640 300" width="100%" role="img" aria-label="Mapa esquemático de riesgo de Magangué">
+    <rect width="640" height="300" fill="var(--tierra)" rx="10"/>
+    <path d="M0,22 C150,40 300,10 640,30 L640,58 C300,40 150,70 0,52Z" fill="var(--rio)"/>
+    <text x="20" y="42" fontSize="12" fill="#fff" fontWeight="700">Río Magdalena →</text>
+    {B.map(b=>{const n=BARRIOS.find(x=>x.id===b.id);const lv=barriosAfect.includes(b.id)?nivel:0;
+      return <g key={b.id}><rect x={b.x} y={b.y} width={b.w} height={b.h} rx="8" fill={c[lv]} stroke="#333" strokeOpacity=".3"/>
+      <text x={b.x+b.w/2} y={b.y+b.h/2-4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#222">{n.nombre}</text>
+      <text x={b.x+b.w/2} y={b.y+b.h/2+12} textAnchor="middle" fontSize="10.5" fill="#222">{n.hogares.toLocaleString("es-CO")} hogares · {TXT[NIVELES[lv]]}</text></g>})}
+    <circle cx="560" cy="250" r="12" fill="#1f4e79"/><text x="560" y="254" textAnchor="middle" fontSize="11" fill="#fff">PE</text>
+    <text x="560" y="280" textAnchor="middle" fontSize="10.5" fill="var(--ink)">Punto de encuentro (zona alta)</text>
+    <circle cx="80" cy="270" r="12" fill="#1f4e79"/><text x="80" y="274" textAnchor="middle" fontSize="11" fill="#fff">PE</text>
+    {nivel>=2&&<g stroke="#1f4e79" strokeWidth="2.5" strokeDasharray="7 5" fill="none" markerEnd="url(#fl)">
+      <path d="M325,140 C360,200 480,230 545,248"/><path d="M495,145 C520,190 545,220 556,236"/>
+      <path d="M365,220 C420,250 500,255 546,252"/><path d="M180,225 C150,250 110,262 94,266"/></g>}
+    <defs><marker id="fl" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="#1f4e79"/></marker></defs>
+    <g><rect x="196" y="18" width="70" height="20" rx="4" fill="#1f4e79"/><text x="231" y="32" textAnchor="middle" fontSize="10" fill="#fff">Estación E1</text></g>
+  </svg>;
+}
+
+function Login({onOk}){
+  const [u,setU]=useState(""),[p,setP]=useState(""),[err,setErr]=useState("");
+  const go=e=>{e.preventDefault();if(u.trim()==="demo123"&&p==="demo1234")onOk(u.trim());else setErr("Usuario o contraseña incorrectos.")};
+  return <form className="login" onSubmit={go}>
+    <h2 style={{marginTop:0,color:"var(--pri)"}}>SAM-Magangué</h2>
+    <div className="small" style={{marginBottom:12}}>Sistema de Alerta Multicanal ante crecientes del río Magdalena · Prototipo de baja fidelidad (Etapa 4)</div>
+    <label>Usuario</label><input value={u} onChange={e=>setU(e.target.value)} autoComplete="username" placeholder="demo123"/>
+    <label>Contraseña</label><input type="password" value={p} onChange={e=>setP(e.target.value)} autoComplete="current-password" placeholder="••••••••"/>
+    {err&&<div className="no" style={{marginBottom:8}}>{err}</div>}
+    <button className="btn" style={{width:"100%"}}>Ingresar</button>
+    <div className="hint" style={{marginTop:12}}>Acceso de demostración — usuario: <b>demo123</b> · contraseña: <b>demo1234</b></div>
+  </form>;
+}
+
+function Panel({cfg,esc,setEsc,seed,setSeed,paso,setPaso,play,setPlay,vel,setVel,datos,reportes}){
+  const s=datos.serie[paso];const lv=NIVELES[s.nivel];
+  const afect=s.nivel>=1?BARRIOS.map(b=>b.id):[];
+  const nVal=datos.serie.slice(0,paso+1).filter(x=>!x.valido).length;
+  return <div className="grid" style={{gap:14}}>
+    <div className="card row" style={{justifyContent:"space-between"}}>
+      <div className="row">
+        <label>Escenario <select value={esc} onChange={e=>{setEsc(e.target.value);setPaso(0)}}>{Object.entries(ESCENARIOS).map(([k,v])=><option key={k} value={k}>{v.nombre}</option>)}</select></label>
+        <label>Semilla <input type="number" value={seed} onChange={e=>{setSeed(+e.target.value||1);setPaso(0)}} style={{width:80}}/></label>
+        <button className="btn" onClick={()=>setPlay(!play)}>{play?"⏸ Pausar":"▶ Simular"}</button>
+        <button className="btn sec" onClick={()=>{setPaso(0);setPlay(false)}}>⟲ Reiniciar</button>
+        <button className="btn sec" onClick={()=>setPaso(Math.min(N_STEPS-1,paso+1))}>+10 min</button>
+        <label>Velocidad <select value={vel} onChange={e=>setVel(+e.target.value)}><option value={400}>1×</option><option value={120}>4×</option><option value={30}>16×</option></select></label>
+      </div>
+      <div className="small">t = {fmt(s.t,1)} h · lectura {paso+1}/{N_STEPS}</div>
+    </div>
+    <div className="grid g4">
+      <div className="card"><div className="lbl">Nivel del río h(t) (validado)</div><div className="kpi">{fmt(s.h)} m</div><div className="small">Lectura cruda: {s.obs==null?"sin dato":fmt(s.obs,3)} {s.valido?"✔":"✖ "+s.motivo}</div></div>
+      <div className="card"><div className="lbl">Tasa de cambio dh/dt (1 h)</div><div className="kpi">{fmt(s.dhdt,3)} m/h</div><div className="small">Ecuación 1, Etapa 3</div></div>
+      <div className="card"><div className="lbl">Tiempo hasta umbral (Ec. 2)</div><div className="small">Amarillo: <b>{fmtH(s.tAm)}</b><br/>Naranja: <b>{fmtH(s.tNa)}</b><br/>Rojo: <b>{fmtH(s.tRo)}</b></div></div>
+      <div className="card"><div className="lbl">Estado de alerta</div><div style={{margin:"6px 0"}}><span className={"badge b-"+lv} aria-live="polite">{ICO[lv]} {TXT[lv]}</span></div><div className="small">Lecturas descartadas: {nVal} · reportes ciudadanos: {reportes.length}</div></div>
+    </div>
+    <div className="grid g2">
+      <div className="card"><h2>E1 → P2 · Nivel del río y clasificación</h2>
+        <Grafico serie={datos.serie} real={datos.real} cfg={cfg} hasta={paso}/>
+        <div className="small">Azul: nivel validado · gris punteado: nivel real simulado · puntos rojos: lecturas descartadas por la validación (P1) · bandas: nivel de alerta emitido.</div>
+      </div>
+      <div className="card"><h2>P5 / S4 · Mapa de riesgo y rutas</h2><Mapa nivel={s.nivel} barriosAfect={afect}/>
+        <div className="small">Con alerta naranja o roja se muestran las rutas de evacuación hacia los puntos de encuentro (PE).</div></div>
+    </div>
+  </div>;
+}
+
+function Notificaciones({cfg,datos,paso,user}){
+  const s=datos.serie[paso];const lv=NIVELES[s.nivel];
+  const [res,setRes]=useState(null);
+  const msg=s.nivel===0?"Sin alertas activas. Nivel del río: "+fmt(s.h)+" m.":
+    `SAM-Magangue: ${TXT[lv].toUpperCase()}. Rio en ${fmt(s.h,2)} m, sube ${fmt(s.dhdt*100,0)} cm/h. ${s.nivel>=2?"Prepare evacuacion al punto de encuentro.":"Este atento a nuevos avisos."}`.slice(0,140);
+  const hablar=()=>{try{const u=new SpeechSynthesisUtterance(msg.replace("SAM-Magangue:","Aviso de SAM Magangué."));u.lang="es-CO";speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){alert("La síntesis de voz no está disponible en este navegador.")}};
+  const correr=()=>setRes(simularDifusion(cfg,1000+paso,lv));
+  return <div className="grid g2">
+    <div className="card"><h2>P4 · Gestor de notificaciones (difusión a 10 526 hogares)</h2>
+      <div className="row"><span className={"badge b-"+lv}>{ICO[lv]} {TXT[lv]}</span><button className="btn" onClick={correr}>Simular difusión de esta alerta</button><span className="small">Colas: {cfg.colas} · {cfg.rate} msg/s por cola · reintentos: {cfg.retries}</span></div>
+      {res&&<>
+        <table style={{marginTop:10}}><tbody>
+          <tr><th>Mensajes generados</th><td>{res.msgs.toLocaleString("es-CO")}</td><th>Tiempo de difusión (ronda 1)</th><td className={res.difusion<=300?"ok":"no"}>{fmt(res.difusion,1)} s</td></tr>
+          <tr><th>Latencia push p50 / p95</th><td className={res.pushP95<=100?"ok":"no"}>{fmt(res.pushP50,0)} / {fmt(res.pushP95,0)} s</td><th>Latencia SMS p50 / p95</th><td className={res.smsP95<=190?"ok":"no"}>{fmt(res.smsP50,0)} / {fmt(res.smsP95,0)} s</td></tr>
+          <tr><th>Entrega en 1.ª ronda</th><td>{fmt(res.entrega1*100,2)} %</td><th>Entrega final (con reintentos)</th><td className={res.entregaFinal>=0.99?"ok":"no"}>{fmt(res.entregaFinal*100,2)} %</td></tr>
+          <tr><th>Hogares avisados ≤ 5 min</th><td>{fmt(res.alcanzados5min*100,2)} %</td><th>Primer canal efectivo</th><td>push {res.porCanal.push} · SMS {res.porCanal.sms} · voz {res.porCanal.voz}</td></tr>
+        </tbody></table>
+        <h3>Cobertura por perfil de usuario (H-Inclusión)</h3>
+        <table><thead><tr><th>Perfil</th><th>Hogares</th><th>Canales</th><th>Entrega final</th></tr></thead><tbody>
+          {res.porPerfil.map(p=><tr key={p.id}><td>{{smart:"Smartphone",basico:"Celular básico",sin:"Sin celular (altavoz)"}[p.id]}</td><td>{p.n}</td><td>{PERFILES.find(x=>x.id===p.id).canales.join(" + ")}</td><td>{fmt(p.alc*100,2)} %</td></tr>)}
+        </tbody></table></>}
+      {!res&&<p className="small">Pulse el botón para ejecutar el gestor de notificaciones con la alerta del instante actual. La simulación usa las probabilidades de entrega por canal y el presupuesto de latencia de la Etapa 3.</p>}
+    </div>
+    <div className="card"><h2>S1 · S2 · S3 · Salidas al ciudadano</h2>
+      <div className="row" style={{alignItems:"flex-start"}}>
+        <div className="phone"><div className="small" style={{color:"#9ab"}}>Push · App/PWA</div>
+          <div className="notif"><b>{ICO[lv]} SAM-Magangué</b><br/>{msg}</div>
+          <div className="small" style={{color:"#9ab",marginTop:12}}>SMS (sin internet) · {msg.length}/140</div>
+          <div className="sms">{msg}</div></div>
+        <div style={{flex:1,minWidth:150}}><button className="btn" onClick={hablar}>🔊 Reproducir aviso de voz</button>
+          <p className="small">El aviso de voz representa el canal de altavoces comunitarios y llamada automática para personas sin celular o con baja alfabetización digital.</p>
+          <p className="small">Sesión: {user}. El texto se limita a 140 caracteres y usa lenguaje sencillo; el nivel se indica con texto e ícono además del color (WCAG 2.1 AA).</p></div>
+      </div>
+    </div>
+  </div>;
+}
+
+function Reportes({reportes,setReportes,datos,paso}){
+  const s=datos.serie[paso];const [b,setB]=useState("gir"),[h,setH]=useState(""),[d,setD]=useState("");
+  const add=e=>{e.preventDefault();const v=parseFloat(String(h).replace(",","."));if(!isFinite(v))return;
+    const dif=v-s.h;setReportes([{id:Date.now(),t:s.t,barrio:b,h:v,desc:d,medido:s.h,dif,estado:Math.abs(dif)<=0.3?"Coincide":"Revisar sensor"},...reportes]);setH("");setD("")};
+  return <div className="grid g2">
+    <div className="card"><h2>E3 / R2 · Reportes ciudadanos y validación</h2>
+      <table><thead><tr><th>t (h)</th><th>Barrio</th><th>Nivel reportado</th><th>Nivel medido</th><th>Diferencia</th><th>Estado</th></tr></thead><tbody>
+        {reportes.map(r=><tr key={r.id}><td>{fmt(r.t,1)}</td><td>{BARRIOS.find(x=>x.id===r.barrio).nombre}</td><td>{fmt(r.h)} m</td><td>{fmt(r.medido)} m</td><td>{fmt(r.dif)} m</td><td className={r.estado==="Coincide"?"ok":"no"}>{r.estado}</td></tr>)}
+        {!reportes.length&&<tr><td colSpan="6" className="small">Aún no hay reportes.</td></tr>}
+      </tbody></table>
+      <p className="small">Regla R2: si |nivel reportado − nivel medido| &gt; 0,30 m, el sistema marca la estación para revisión técnica.</p></div>
+    <form className="card" onSubmit={add}><h2>Nuevo reporte</h2>
+      <label>Barrio <select value={b} onChange={e=>setB(e.target.value)}>{BARRIOS.map(x=><option key={x.id} value={x.id}>{x.nombre}</option>)}</select></label><br/><br/>
+      <label>Nivel observado (m) <input type="number" step="0.01" value={h} onChange={e=>setH(e.target.value)} style={{width:100}}/></label><br/><br/>
+      <label>Descripción<br/><textarea value={d} onChange={e=>setD(e.target.value)} rows="3" style={{width:"100%"}} placeholder="Ej.: el agua llegó al bordillo de la calle 3"/></label><br/>
+      <button className="btn">Enviar reporte</button>
+      <p className="small">La foto se omite en el prototipo; en la versión final se adjunta desde la cámara del celular.</p></form>
+  </div>;
+}
+
+function Experimentos({cfg}){
+  const [n,setN]=useState(20),[jit,setJit]=useState(0.2),[rows,setRows]=useState(null),[dif,setDif]=useState(null);
+  const correr=()=>{const out=[];let sd=1;for(const e of Object.keys(ESCENARIOS))for(let k=0;k<n;k++)out.push(evaluarCorrida(e,cfg,sd++,jit));setRows(out);
+    const d=[];for(let k=0;k<10;k++)d.push(simularDifusion(cfg,500+k));setDif(d)};
+  useEffect(()=>{window.__SAM={evaluarCorrida,simularDifusion,procesar,generarSerie,DEF_CFG,ESCENARIOS};},[]);
+  const resumen=useMemo(()=>{if(!rows)return null;const tp=rows.filter(r=>r.ta9!=null&&r.tc9!=null),fp=rows.filter(r=>r.fpNaranja),fn=rows.filter(r=>r.fnNaranja);
+    const an=tp.map(r=>r.antic9);const m=an.reduce((a,b)=>a+b,0)/an.length;const sd=Math.sqrt(an.reduce((a,b)=>a+(b-m)**2,0)/Math.max(1,an.length-1));
+    return {tp:tp.length,fp:fp.length,fn:fn.length,fpRate:fp.length/Math.max(1,tp.length+fp.length),antMed:m,antSd:sd,antMin:Math.min(...an),cumple6:an.filter(a=>a>=cfg.tmin).length/an.length,
+      errMax:Math.max(...rows.map(r=>r.errMax)),inval:rows.reduce((a,r)=>a+r.invalidas,0)}},[rows]);
+  const csv=()=>{const head="escenario,semilla,max_real_m,t_cruce_9m_h,t_alerta_naranja_h,anticipacion_h,falso_positivo,lecturas_descartadas,error_max_m\n";
+    const body=rows.map(r=>[r.esc,r.seed,fmt(r.maxReal,3),r.tc9==null?"":r.tc9.toFixed(2),r.ta9==null?"":r.ta9.toFixed(2),r.antic9==null?"":r.antic9.toFixed(2),r.fpNaranja?1:0,r.invalidas,r.errMax.toFixed(3)].join(",")).join("\n");
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["﻿"+head+body],{type:"text/csv"}));a.download="matriz_experimental_SAM.csv";a.click()};
+  const W=520,H=240;
+  return <div className="grid" style={{gap:14}}>
+    <div className="card row"><b>Banco de pruebas (Monte Carlo)</b>
+      <label>Corridas por escenario <input type="number" value={n} min="1" max="200" onChange={e=>setN(+e.target.value||1)} style={{width:70}}/></label>
+      <label>Variación de tasas ± <input type="number" step="0.05" value={jit} onChange={e=>setJit(+e.target.value)} style={{width:70}}/></label>
+      <button className="btn" onClick={correr}>Ejecutar pruebas</button>{rows&&<button className="btn sec" onClick={csv}>⬇ Exportar matriz CSV</button>}
+      <span className="small">Configuración: confirmación {cfg.confirm} lectura(s), tmin {cfg.tmin} h, histéresis {fmt(cfg.histeresis)} m</span></div>
+    {resumen&&<div className="grid g4">
+      <div className="card"><div className="lbl">Anticipación media (alerta naranja)</div><div className="kpi">{fmt(resumen.antMed)} h</div><div className="small">DE {fmt(resumen.antSd)} h · mín {fmt(resumen.antMin)} h · ≥ {cfg.tmin} h en {fmt(resumen.cumple6*100,1)} %</div></div>
+      <div className="card"><div className="lbl">Falsos positivos (naranja)</div><div className={"kpi "+(resumen.fpRate<=0.05?"ok":"no")}>{fmt(resumen.fpRate*100,1)} %</div><div className="small">VP {resumen.tp} · FP {resumen.fp} · FN {resumen.fn} · meta ≤ 5 %</div></div>
+      <div className="card"><div className="lbl">Validación P1</div><div className="kpi">{resumen.inval}</div><div className="small">lecturas descartadas · error máx. nivel validado {fmt(resumen.errMax,3)} m</div></div>
+      {dif&&<div className="card"><div className="lbl">Difusión (10 corridas)</div><div className="kpi">{fmt(Math.max(...dif.map(d=>d.difusion)),1)} s</div><div className="small">entrega final media {fmt(dif.reduce((a,d)=>a+d.entregaFinal,0)/dif.length*100,2)} % · SMS p95 {fmt(Math.max(...dif.map(d=>d.smsP95)),0)} s</div></div>}
+    </div>}
+    {rows&&<div className="grid g2">
+      <div className="card"><h2>Dispersión: hora de cruce de 9 m vs. anticipación de la alerta naranja</h2>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%">{(()=>{const pts=rows.filter(r=>r.antic9!=null);const xs=pts.map(r=>r.tc9),ys=pts.map(r=>r.antic9);
+          const x0=Math.min(...xs)-1,x1=Math.max(...xs)+1,y0=0,y1=Math.max(8,...ys)+0.5;const X=v=>40+(W-50)*(v-x0)/(x1-x0),Y=v=>10+(H-40)*(1-(v-y0)/(y1-y0));
+          return <g><line x1="40" x2={W-10} y1={Y(cfg.tmin)} y2={Y(cfg.tmin)} stroke="var(--naranja)" strokeDasharray="5 4"/><text x={W-12} y={Y(cfg.tmin)-4} textAnchor="end" fontSize="10" fill="var(--naranja)">meta {cfg.tmin} h</text>
+            {[0,2,4,6,8].map(v=><text key={v} x="34" y={Y(v)+4} fontSize="10" textAnchor="end" fill="var(--mute)">{v}</text>)}
+            <line x1="40" x2="40" y1="10" y2={H-30} stroke="var(--line)"/><line x1="40" x2={W-10} y1={H-30} y2={H-30} stroke="var(--line)"/>
+            <text x={W/2} y={H-8} textAnchor="middle" fontSize="11" fill="var(--mute)">hora real de cruce de 9,0 m (h)</text>
+            {pts.map((r,i)=><circle key={i} cx={X(r.tc9)} cy={Y(r.antic9)} r="4" fill={r.antic9>=cfg.tmin?"var(--verde)":"var(--roja)"} opacity=".8"/>)}</g>})()}</svg></div>
+      <div className="card scroll"><h2>Matriz de datos experimentales</h2><table><thead><tr><th>Esc.</th><th>Sem.</th><th>h máx</th><th>Cruce 9 m</th><th>Alerta N.</th><th>Antic.</th><th>FP</th><th>Desc.</th></tr></thead><tbody>
+        {rows.map((r,i)=><tr key={i}><td>{r.esc}</td><td>{r.seed}</td><td>{fmt(r.maxReal)}</td><td>{fmtH(r.tc9)}</td><td>{fmtH(r.ta9)}</td><td>{r.antic9==null?"—":fmt(r.antic9)+" h"}</td><td className={r.fpNaranja?"no":""}>{r.fpNaranja?"Sí":"No"}</td><td>{r.invalidas}</td></tr>)}</tbody></table></div>
+    </div>}
+  </div>;
+}
+
+function Ecosistema(){
+  const filas=[["E1","Nivel del río h(t)","Generador de series con ruido (σ = 1 cm) y fallas de sensor (2 %)","IDEAM / UNGRD / sensor IoT futuro"],
+    ["E2","Perfil del usuario","10 526 hogares con perfil smartphone, básico o sin celular","Registro con consentimiento (Ley 1581)"],
+    ["E3","Reportes ciudadanos","Formulario de reporte con validación cruzada","Comunidad de Girardot, Nueva Venecia, Baracoa, Santa Coita"],
+    ["E4","Parámetros de control","Pestaña Configuración (umbrales, tmin, tasas)","Cotas oficiales del IDEAM"],
+    ["P1","Ingesta y validación","Rango [0,15] m, salto ≤ 0,5 m / 10 min, última lectura válida","API REST"],
+    ["P2","Motor de reglas y pronóstico","dh/dt en 1 h, tiempo a umbral, histéresis y confirmación","Reglas explicables (IEEE)"],
+    ["P3","Base de datos","Estado en memoria + exportación CSV","PostgreSQL/PostGIS en la versión final"],
+    ["P4","Gestor de notificaciones","Colas a 50 msg/s, acuse en 5 min y 3 reintentos","Pasarela SMS, servicio push, IVR"],
+    ["P5","Mapa de riesgo y rutas","Mapa esquemático SVG con rutas a puntos de encuentro","Servicio de mapas / PostGIS"],
+    ["S1–S3","Push, SMS y voz","Maqueta de celular y síntesis de voz del navegador","Operadores móviles, altavoces"],
+    ["S5","Panel institucional","Pestaña Panel","Alcaldía de Magangué, UNGRD, CMGRD"],
+    ["R1–R3","Acuse, validación ciudadana y KPIs","Reintentos, regla R2 y banco de pruebas","Recalibración de umbrales"]];
+  return <div className="grid g2">
+    <div className="card"><h2>El prototipo en su ecosistema real</h2>
+      <svg viewBox="0 0 560 330" width="100%" role="img" aria-label="Ecosistema del prototipo">
+        {[["IDEAM / UNGRD\n(datos oficiales)",20,20],["Sensores IoT\n(futuro, LoRa)",20,130],["Comunidad\n(reportes E3)",20,240],
+          ["Operador SMS\ny push",400,20],["Altavoces y\nllamada de voz",400,130],["Alcaldía · CMGRD\n(panel S5)",400,240]].map(([t,x,y],i)=>
+          <g key={i}><rect x={x} y={y} width="140" height="62" rx="10" fill="var(--bg)" stroke="var(--pri2)"/>{t.split("\n").map((l,j)=><text key={j} x={x+70} y={y+27+j*15} textAnchor="middle" fontSize="12" fill="var(--ink)">{l}</text>)}</g>)}
+        <rect x="200" y="95" width="160" height="140" rx="14" fill="var(--pri)"/>
+        <text x="280" y="135" textAnchor="middle" fill="#fff" fontWeight="700" fontSize="14">SAM-Magangué</text>
+        {["P1 Validación","P2 Reglas","P3 Datos · P4 Envíos","P5 Mapa y rutas"].map((t,i)=><text key={i} x="280" y={158+i*17} textAnchor="middle" fill="#fff" fontSize="11">{t}</text>)}
+        {[[160,51,200,120],[160,161,200,165],[160,271,200,210],[360,120,400,51],[360,165,400,161],[360,210,400,271]].map(([a,b,c,d],i)=><line key={i} x1={a} y1={b} x2={c} y2={d} stroke="var(--mute)" strokeWidth="1.5" markerEnd="url(#ar)"/>)}
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="var(--mute)"/></marker></defs>
+        <text x="280" y="320" textAnchor="middle" fontSize="11" fill="var(--mute)">Restricciones: conectividad limitada, Habeas Data, temporada de lluvias, gama básica</text>
+      </svg></div>
+    <div className="card scroll" style={{maxHeight:420}}><h2>Correspondencia diseño (Etapa 3) → prototipo</h2>
+      <table><thead><tr><th>Bloque</th><th>Elemento</th><th>Implementación en el prototipo</th><th>Actor/sistema real</th></tr></thead>
+      <tbody>{filas.map(f=><tr key={f[0]}>{f.map((c,i)=><td key={i}>{i===0?<b>{c}</b>:c}</td>)}</tr>)}</tbody></table></div>
+  </div>;
+}
+
+function Config({cfg,setCfg}){
+  const F=({k,label,step=0.01})=><label style={{display:"block",margin:"6px 0"}}>{label} <input type="number" step={step} value={cfg[k]} onChange={e=>setCfg({...cfg,[k]:+e.target.value})} style={{width:90}}/></label>;
+  return <div className="grid g3">
+    <div className="card"><h2>E4 · Umbrales y reglas</h2><F k="hAm" label="Umbral amarillo (m)"/><F k="hNa" label="Umbral naranja (m)"/><F k="hRo" label="Umbral rojo (m)"/><F k="tmin" label="Anticipación mínima tmin (h)" step={0.5}/><F k="confirm" label="Lecturas de confirmación" step={1}/><F k="histeresis" label="Histéresis de bajada (m)"/></div>
+    <div className="card"><h2>P4 · Notificaciones</h2><F k="rate" label="Tasa por cola (msg/s)" step={5}/>
+      <label>Colas <select value={cfg.colas} onChange={e=>setCfg({...cfg,colas:e.target.value})}><option value="paralelo">Una por canal</option><option value="compartida">Una compartida</option></select></label>
+      <F k="pPush" label="p entrega push"/><F k="pSms" label="p entrega SMS"/><F k="pVoz" label="p entrega voz"/><F k="retries" label="Reintentos" step={1}/></div>
+    <div className="card"><h2>E1 · Sensor simulado</h2><F k="sigma" label="Ruido σ (m)" step={0.005}/><F k="pFalla" label="Prob. de falla por lectura" step={0.005}/>
+      <button className="btn sec" onClick={()=>setCfg(DEF_CFG)}>Restaurar valores de la Etapa 3</button></div>
+  </div>;
+}
+
+function App(){
+  const Q=new URLSearchParams(location.search);const CAP=Q.get("captura")==="1";
+  const [user,setUser]=useState(()=>{if(CAP)return "demo123";try{return sessionStorage.getItem("sam_user")}catch(e){return null}});
+  useEffect(()=>{if(CAP&&Q.get("paso"))setPaso(+Q.get("paso"));if(CAP&&Q.get("esc"))setEsc(Q.get("esc"));
+    if(CAP&&Q.get("auto"))setTimeout(()=>{document.querySelectorAll("button").forEach(b=>{if(/Ejecutar pruebas|Simular difusi/.test(b.textContent))b.click()})},300)},[]);
+  const [tab,setTab]=useState(Q.get("tab")||"panel"),[cfg,setCfg]=useState(DEF_CFG),[esc,setEsc]=useState("creciente"),[seed,setSeed]=useState(7);
+  const [paso,setPaso]=useState(0),[play,setPlay]=useState(false),[vel,setVel]=useState(120),[reportes,setReportes]=useState([]);
+  const datos=useMemo(()=>{const g=generarSerie(esc,cfg,seed,0);return{real:g.real,serie:procesar(g.obs,cfg)}},[esc,cfg,seed]);
+  useEffect(()=>{if(!play)return;const id=setInterval(()=>setPaso(p=>{if(p>=N_STEPS-1){setPlay(false);return p}return p+1}),vel);return()=>clearInterval(id)},[play,vel]);
+  if(!user)return <Login onOk={u=>{try{sessionStorage.setItem("sam_user",u)}catch(e){}setUser(u)}}/>;
+  const T=[["panel","Panel institucional"],["notif","Notificaciones"],["rep","Reportes ciudadanos"],["exp","Experimentos y KPIs"],["eco","Ecosistema"],["cfg","Configuración"]];
+  const lv=NIVELES[datos.serie[paso].nivel];
+  return <>
+    <div className="top"><div><h1>SAM-Magangué</h1><div className="sub">Sistema de Alerta Multicanal · río Magdalena · prototipo de baja fidelidad</div></div>
+      <span className={"badge b-"+lv} style={{marginLeft:"auto"}}>{ICO[lv]} {TXT[lv]}</span>
+      <span className="sub">👤 {user}</span><button className="btn sec" style={{color:"#fff",borderColor:"#ffffff66"}} onClick={()=>{try{sessionStorage.removeItem("sam_user")}catch(e){}setUser(null)}}>Salir</button></div>
+    <nav className="tabs">{T.map(([k,t])=><button key={k} className={"tab"+(tab===k?" on":"")} onClick={()=>setTab(k)}>{t}</button>)}</nav>
+    <main>
+      {tab==="panel"&&<Panel {...{cfg,esc,setEsc,seed,setSeed,paso,setPaso,play,setPlay,vel,setVel,datos,reportes}}/>}
+      {tab==="notif"&&<Notificaciones cfg={cfg} datos={datos} paso={paso} user={user}/>}
+      {tab==="rep"&&<Reportes {...{reportes,setReportes,datos,paso}}/>}
+      {tab==="exp"&&<Experimentos cfg={cfg}/>}
+      {tab==="eco"&&<Ecosistema/>}
+      {tab==="cfg"&&<Config cfg={cfg} setCfg={setCfg}/>}
+      <p className="small" style={{textAlign:"center",marginTop:20}}>Proyecto de Ingeniería I · UNAD · Grupo 62 · William Enrique Paba Ruenes · Datos simulados con fines académicos</p>
+    </main></>;
+}
+window.__SAM={evaluarCorrida,simularDifusion,procesar,generarSerie,DEF_CFG,ESCENARIOS};
+{const t=new URLSearchParams(location.search).get("tema");if(t)document.documentElement.setAttribute("data-theme",t);}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
