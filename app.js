@@ -630,6 +630,41 @@ function Mapa({
     fill: "#fff"
   }, "Estaci\xF3n E1")));
 }
+
+/* Autenticación de demostración (solo en este navegador; no usar contraseñas reales) */
+const DEMO = {
+  usuario: "demo123",
+  clave: "demo1234",
+  nombre: "Operador CMGRD (demo)",
+  rol: "Operador",
+  barrio: "gir",
+  canal: "push"
+};
+function leerUsuarios() {
+  try {
+    return JSON.parse(localStorage.getItem("sam_usuarios") || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+function autenticar(u, p) {
+  u = (u || "").trim().toLowerCase();
+  if (u === DEMO.usuario && p === DEMO.clave) return DEMO;
+  const x = leerUsuarios()[u];
+  return x && x.clave === p ? x : null;
+}
+function leerSesion() {
+  try {
+    return JSON.parse(localStorage.getItem("sam_sesion") || "null");
+  } catch (e) {
+    return null;
+  }
+}
+function guardarSesion(s) {
+  try {
+    s ? localStorage.setItem("sam_sesion", JSON.stringify(s)) : localStorage.removeItem("sam_sesion");
+  } catch (e) {}
+}
 function Login({
   onOk
 }) {
@@ -638,7 +673,14 @@ function Login({
     [err, setErr] = useState("");
   const go = e => {
     e.preventDefault();
-    if (u.trim() === "demo123" && p === "demo1234") onOk(u.trim());else setErr("Usuario o contraseña incorrectos.");
+    const x = autenticar(u, p);
+    if (x) {
+      const {
+        clave,
+        ...s
+      } = x;
+      onOk(s);
+    } else setErr("Usuario o contraseña incorrectos. Use la cuenta demo o regístrese.");
   };
   return /*#__PURE__*/React.createElement("form", {
     className: "login",
@@ -679,7 +721,59 @@ function Login({
     style: {
       marginTop: 12
     }
-  }, "Acceso de demostraci\xF3n \u2014 usuario: ", /*#__PURE__*/React.createElement("b", null, "demo123"), " \xB7 contrase\xF1a: ", /*#__PURE__*/React.createElement("b", null, "demo1234")));
+  }, "Acceso de demostraci\xF3n \u2014 usuario: ", /*#__PURE__*/React.createElement("b", null, "demo123"), " \xB7 contrase\xF1a: ", /*#__PURE__*/React.createElement("b", null, "demo1234")), /*#__PURE__*/React.createElement("p", {
+    className: "small"
+  }, "\xBFNo tiene cuenta? ", /*#__PURE__*/React.createElement("a", {
+    href: "index.html#registro"
+  }, "Reg\xEDstrese"), " \xB7 ", /*#__PURE__*/React.createElement("a", {
+    href: "index.html"
+  }, "Volver al inicio")));
+}
+function Bitacora({
+  logs
+}) {
+  const col = {
+    info: "var(--mute)",
+    falla: "var(--roja)",
+    alerta: "var(--naranja)",
+    envio: "var(--verde)"
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("h2", null, "Bit\xE1cora del sistema (en vivo)"), /*#__PURE__*/React.createElement("div", {
+    className: "log",
+    "aria-live": "polite"
+  }, logs.length ? logs.slice(-60).reverse().map((l, i) => /*#__PURE__*/React.createElement("div", {
+    key: i
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: "var(--mute)"
+    }
+  }, "[", fmt(l.t, 1).padStart(5, " "), " h]"), " ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: col[l.tipo]
+    }
+  }, l.bloque), " ", l.txt)) : /*#__PURE__*/React.createElement("span", {
+    className: "small"
+  }, "Pulse \u25B6 Simular: aqu\xED aparecer\xE1n las lecturas descartadas, los cambios de alerta y los env\xEDos autom\xE1ticos.")));
+}
+function MiAlerta({
+  user,
+  s
+}) {
+  if (!user || user.rol === "Operador") return null;
+  const lv = NIVELES[s.nivel];
+  const b = BARRIOS.find(x => x.id === user.barrio);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card row",
+    style: {
+      borderLeft: `6px solid var(--${lv})`
+    }
+  }, /*#__PURE__*/React.createElement("b", null, "Vista ciudadana \xB7 ", user.nombre), /*#__PURE__*/React.createElement("span", {
+    className: "badge b-" + lv
+  }, ICO[lv], " ", TXT[lv], " en ", b ? b.nombre : "su barrio"), /*#__PURE__*/React.createElement("span", {
+    className: "small"
+  }, "Canal preferido: ", user.canal.toUpperCase(), " \xB7 ", s.nivel >= 2 ? "Diríjase al punto de encuentro por la ruta marcada en el mapa." : s.nivel === 1 ? "Esté atento a nuevos avisos y prepare su kit de emergencia." : "Sin riesgo por ahora."));
 }
 function Panel({
   cfg,
@@ -694,7 +788,9 @@ function Panel({
   vel,
   setVel,
   datos,
-  reportes
+  reportes,
+  logs,
+  user
 }) {
   const s = datos.serie[paso];
   const lv = NIVELES[s.nivel];
@@ -754,7 +850,10 @@ function Panel({
     value: 30
   }, "16\xD7")))), /*#__PURE__*/React.createElement("div", {
     className: "small"
-  }, "t = ", fmt(s.t, 1), " h \xB7 lectura ", paso + 1, "/", N_STEPS)), /*#__PURE__*/React.createElement("div", {
+  }, "t = ", fmt(s.t, 1), " h \xB7 lectura ", paso + 1, "/", N_STEPS)), /*#__PURE__*/React.createElement(MiAlerta, {
+    user: user,
+    s: s
+  }), /*#__PURE__*/React.createElement("div", {
     className: "grid g4"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
@@ -809,7 +908,9 @@ function Panel({
     barriosAfect: afect
   }), /*#__PURE__*/React.createElement("div", {
     className: "small"
-  }, "Con alerta naranja o roja se muestran las rutas de evacuaci\xF3n hacia los puntos de encuentro (PE)."))));
+  }, "Con alerta naranja o roja se muestran las rutas de evacuaci\xF3n hacia los puntos de encuentro (PE)."))), /*#__PURE__*/React.createElement(Bitacora, {
+    logs: logs
+  }));
 }
 function Notificaciones({
   cfg,
@@ -1354,13 +1455,17 @@ function App() {
   const Q = new URLSearchParams(location.search);
   const CAP = Q.get("captura") === "1";
   const [user, setUser] = useState(() => {
-    if (CAP) return "demo123";
-    try {
-      return sessionStorage.getItem("sam_user");
-    } catch (e) {
-      return null;
+    if (CAP) {
+      const {
+        clave,
+        ...s
+      } = DEMO;
+      return s;
     }
+    return leerSesion();
   });
+  const [logs, setLogs] = useState([]);
+  const prevNivel = useRef(0);
   useEffect(() => {
     if (CAP && Q.get("paso")) setPaso(+Q.get("paso"));
     if (CAP && Q.get("esc")) setEsc(Q.get("esc"));
@@ -1396,11 +1501,63 @@ function App() {
     }), vel);
     return () => clearInterval(id);
   }, [play, vel]);
+  // Bitácora en vivo: P1 (lecturas descartadas), P2 (cambio de alerta) y P4 (difusión automática)
+  useEffect(() => {
+    if (paso === 0) {
+      setLogs([{
+        t: 0,
+        tipo: "info",
+        bloque: "E1",
+        txt: `Estación conectada. Escenario: ${ESCENARIOS[esc].nombre}.`
+      }]);
+      prevNivel.current = datos.serie[0].nivel;
+      return;
+    }
+    const s = datos.serie[paso],
+      nuevos = [];
+    if (!s.valido) nuevos.push({
+      t: s.t,
+      tipo: "falla",
+      bloque: "P1",
+      txt: `Lectura descartada (${s.motivo}); se conserva ${fmt(s.h)} m.`
+    });
+    if (s.nivel !== prevNivel.current) {
+      const sube = s.nivel > prevNivel.current;
+      const lv = NIVELES[s.nivel];
+      nuevos.push({
+        t: s.t,
+        tipo: "alerta",
+        bloque: "P2",
+        txt: `${sube ? "Sube" : "Baja"} a ${TXT[lv].toUpperCase()} · h = ${fmt(s.h)} m · dh/dt = ${fmt(s.dhdt, 3)} m/h.`
+      });
+      if (sube) {
+        const r = simularDifusion(cfg, 1000 + paso, lv);
+        nuevos.push({
+          t: s.t,
+          tipo: "envio",
+          bloque: "P4",
+          txt: `${r.msgs.toLocaleString("es-CO")} mensajes en ${fmt(r.difusion, 0)} s · entrega ${fmt(r.entregaFinal * 100, 2)} % (push ${r.porCanal.push}, SMS ${r.porCanal.sms}, voz ${r.porCanal.voz}).`
+        });
+        if (s.nivel >= 2) nuevos.push({
+          t: s.t,
+          tipo: "info",
+          bloque: "P5",
+          txt: "Rutas de evacuación publicadas para los 4 barrios."
+        });
+        if (s.nivel === 3) nuevos.push({
+          t: s.t,
+          tipo: "alerta",
+          bloque: "S5",
+          txt: "Escalado a Alcaldía, UNGRD y CMGRD para decisión de evacuación."
+        });
+      }
+      prevNivel.current = s.nivel;
+    }
+    if (nuevos.length) setLogs(l => [...l, ...nuevos]);
+  }, [paso, datos]);
   if (!user) return /*#__PURE__*/React.createElement(Login, {
     onOk: u => {
-      try {
-        sessionStorage.setItem("sam_user", u);
-      } catch (e) {}
+      guardarSesion(u);
       setUser(u);
     }
   });
@@ -1417,19 +1574,17 @@ function App() {
     }
   }, ICO[lv], " ", TXT[lv]), /*#__PURE__*/React.createElement("span", {
     className: "sub"
-  }, "\uD83D\uDC64 ", user), /*#__PURE__*/React.createElement("button", {
+  }, "\uD83D\uDC64 ", user.nombre, " \xB7 ", user.rol), /*#__PURE__*/React.createElement("button", {
     className: "btn sec",
     style: {
       color: "#fff",
       borderColor: "#ffffff66"
     },
     onClick: () => {
-      try {
-        sessionStorage.removeItem("sam_user");
-      } catch (e) {}
-      setUser(null);
+      guardarSesion(null);
+      location.href = "index.html";
     }
-  }, "Salir")), /*#__PURE__*/React.createElement("nav", {
+  }, "Cerrar sesi\xF3n")), /*#__PURE__*/React.createElement("nav", {
     className: "tabs"
   }, T.map(([k, t]) => /*#__PURE__*/React.createElement("button", {
     key: k,
@@ -1448,12 +1603,14 @@ function App() {
     vel,
     setVel,
     datos,
-    reportes
+    reportes,
+    logs,
+    user
   }), tab === "notif" && /*#__PURE__*/React.createElement(Notificaciones, {
     cfg: cfg,
     datos: datos,
     paso: paso,
-    user: user
+    user: user.usuario
   }), tab === "rep" && /*#__PURE__*/React.createElement(Reportes, {
     reportes,
     setReportes,

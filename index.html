@@ -2,14 +2,165 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SAM-Magangué Prototipo</title>
-<link rel="stylesheet" href="styles.css">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SAM-Magangué</title>
+<meta name="description" content="Sistema de Alerta Multicanal ante crecientes del río Magdalena en Magangué, Bolívar. Prototipo de baja fidelidad, Proyecto de Ingeniería I, UNAD.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap">
+<link rel="stylesheet" href="landing.css">
 </head>
 <body>
-<div id="root"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
-<script src="app.js"></script>
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="marca" href="#inicio" aria-label="SAM-Magangué, inicio">
+      <svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true"><rect x="10" y="2" width="8" height="24" rx="1.5" fill="var(--regla)"/><path d="M10 6h4M10 10h6M10 14h4M10 18h6M10 22h4" stroke="var(--tinta-fija)" stroke-width="1.6"/><path d="M1 19c4-3 7 3 13 0s9-3 13 0v8H1z" fill="var(--rio)" opacity=".9"/></svg>
+      <span>SAM-Magangué</span>
+    </a>
+    <nav class="nav-links" aria-label="Secciones">
+      <a href="#problema">Problema</a><a href="#funciona">Cómo funciona</a><a href="#resultados">Resultados</a>
+    </nav>
+    <div class="nav-cta">
+      <button class="btn ghost" type="button" data-abrir="login">Iniciar sesión</button>
+      <button class="btn solid" type="button" data-abrir="registro">Registrarse</button>
+    </div>
+  </div>
+</header>
+
+<main id="inicio">
+  <section class="hero">
+    <div class="wrap hero-in">
+      <div class="hero-txt">
+        <p class="eyebrow">Río Magdalena · Magangué, Bolívar</p>
+        <h1>Cuando el río sube, cada familia se entera a tiempo.</h1>
+        <p class="lead">SAM-Magangué lee el nivel del río cada 10 minutos, calcula cuántas horas faltan para cada cota de alerta y avisa a los 10&nbsp;526 hogares ribereños por app, SMS y voz, incluso donde no hay internet.</p>
+        <div class="hero-cta">
+          <button class="btn solid lg" type="button" data-abrir="registro">Crear cuenta ciudadana</button>
+          <button class="btn ghost lg" type="button" data-abrir="login">Entrar con la cuenta demo</button>
+        </div>
+        <p class="nota">Prototipo de baja fidelidad con datos simulados · Cuenta demo: <code>demo123</code> / <code>demo1234</code></p>
+      </div>
+
+      <figure class="regla-wrap" aria-label="Regla limnimétrica simulada con el nivel del río">
+        <svg id="regla" viewBox="0 0 320 380" role="img">
+          <title>Nivel del río en la regla limnimétrica</title>
+          <defs>
+            <clipPath id="vaso"><rect x="0" y="0" width="320" height="380"/></clipPath>
+            <linearGradient id="agua" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--rio-claro)"/><stop offset="1" stop-color="var(--rio)"/></linearGradient>
+          </defs>
+          <g id="umbrales"></g>
+          <rect x="120" y="20" width="54" height="340" fill="var(--regla)" rx="3"/>
+          <g id="marcas"></g>
+          <g clip-path="url(#vaso)"><path id="ola" fill="url(#agua)" opacity=".88"/></g>
+        </svg>
+        <figcaption class="lectura">
+          <div><span class="k">h(t)</span><b id="lec-h">7,40 m</b></div>
+          <div><span class="k">dh/dt</span><b id="lec-v">+0,06 m/h</b></div>
+          <div><span class="k">al rojo</span><b id="lec-t">—</b></div>
+          <span id="lec-estado" class="chip verde">Normal</span>
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="problema" class="banda">
+    <div class="wrap">
+      <h2>El aviso llega tarde a quien más lo necesita</h2>
+      <div class="cifras">
+        <div><b>40&nbsp;000</b><span>personas en riesgo por el dique del río en julio de 2024</span></div>
+        <div><b>10&nbsp;526</b><span>hogares en Girardot, Nueva Venecia, Baracoa y Santa Coita</span></div>
+        <div><b>32&nbsp;%</b><span>de los hogares simulados sin smartphone: celular básico o ningún teléfono</span></div>
+      </div>
+      <p class="texto">Hoy la gestión del riesgo es reactiva: la calamidad se declara después de la inundación. Faltan sensores continuos, una plataforma que una los datos del IDEAM, la UNGRD y la Alcaldía, y un canal que convierta un número técnico en una instrucción clara para cada familia.</p>
+    </div>
+  </section>
+
+  <section id="funciona">
+    <div class="wrap">
+      <h2>Del dato del río a la alerta en el celular</h2>
+      <ol class="flujo">
+        <li><span class="cod">E1</span><h3>Lee el nivel</h3><p>Una lectura cada 10 minutos desde la estación del IDEAM o un sensor propio.</p></li>
+        <li><span class="cod">P1</span><h3>Valida el dato</h3><p>Descarta lecturas fuera de 0 a 15 m o saltos mayores a 0,5 m y conserva la última válida.</p></li>
+        <li><span class="cod">P2</span><h3>Anticipa</h3><p>Calcula dh/dt en la última hora y el tiempo hasta 8, 9 y 10 m. Si faltan 6 h o menos, alerta.</p></li>
+        <li><span class="cod">P4</span><h3>Avisa a todos</h3><p>Colas por canal a 50 mensajes por segundo, acuse en 5 minutos y hasta 3 reintentos.</p></li>
+        <li><span class="cod">R1–R3</span><h3>Aprende</h3><p>Acuses, reportes ciudadanos y KPIs ajustan los umbrales y los reintentos.</p></li>
+      </ol>
+      <div class="canales">
+        <div><h3>Push en la app</h3><p>Para smartphone, con mapa y ruta al punto de encuentro.</p></div>
+        <div><h3>SMS de 140 caracteres</h3><p>Llega a celulares básicos sin datos móviles.</p></div>
+        <div><h3>Voz y altavoces</h3><p>Para quien no tiene teléfono o tiene baja alfabetización digital.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="resultados" class="banda">
+    <div class="wrap">
+      <h2>Lo que midieron 60 simulaciones</h2>
+      <div class="tabla-wrap">
+        <table>
+          <thead><tr><th>Indicador</th><th>Meta</th><th>Medido</th><th>Estado</th></tr></thead>
+          <tbody>
+            <tr><td>Anticipación de la alerta naranja</td><td>≥ 6 h</td><td>7,83 h</td><td><span class="chip verde">Cumple</span></td></tr>
+            <tr><td>Tiempo para avisar a 10 526 hogares</td><td>≤ 300 s</td><td>238,3 s</td><td><span class="chip verde">Cumple</span></td></tr>
+            <tr><td>Entrega final con reintentos</td><td>≥ 99 %</td><td>99,88 %</td><td><span class="chip verde">Cumple</span></td></tr>
+            <tr><td>Latencia SMS (percentil 95)</td><td>≤ 190 s</td><td>311 s</td><td><span class="chip roja">Por mejorar</span></td></tr>
+            <tr><td>Falsas alarmas naranja</td><td>≤ 5 %</td><td>47,4 %</td><td><span class="chip roja">Por mejorar</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="texto">Las falsas alarmas aparecen cuando el río sube rápido y luego se detiene. La mejora propuesta es sumar una estación aguas arriba y el pronóstico del IDEAM antes de emitir la alerta naranja.</p>
+    </div>
+  </section>
+
+  <section class="cierre">
+    <div class="wrap cierre-in">
+      <h2>Pruebe el simulador completo</h2>
+      <p>Simule una creciente, vea la bitácora del sistema, reciba la alerta como ciudadano y ejecute el banco de pruebas.</p>
+      <div class="hero-cta"><button class="btn solid lg" type="button" data-abrir="registro">Registrarse</button><button class="btn ghost lg" type="button" data-abrir="login">Iniciar sesión</button></div>
+    </div>
+  </section>
+</main>
+
+<footer class="pie"><div class="wrap">Proyecto de Ingeniería I · UNAD · Grupo 62 · William Enrique Paba Ruenes · 2026 · Datos simulados con fines académicos.</div></footer>
+
+<dialog id="auth" aria-labelledby="auth-titulo">
+  <form method="dialog" class="cerrar-form"><button class="x" aria-label="Cerrar">×</button></form>
+  <h2 id="auth-titulo">Acceso a SAM-Magangué</h2>
+  <div class="pestanas" role="tablist">
+    <button type="button" role="tab" id="tab-login" aria-selected="true" data-vista="login">Iniciar sesión</button>
+    <button type="button" role="tab" id="tab-registro" aria-selected="false" data-vista="registro">Registrarse</button>
+  </div>
+
+  <form id="f-login" class="form" novalidate>
+    <label for="l-usuario">Usuario</label>
+    <input id="l-usuario" autocomplete="username" required placeholder="demo123">
+    <label for="l-clave">Contraseña</label>
+    <input id="l-clave" type="password" autocomplete="current-password" required placeholder="demo1234">
+    <p class="error" id="l-error" role="alert" hidden></p>
+    <button class="btn solid lg" type="submit">Entrar al simulador</button>
+    <button class="btn ghost" type="button" id="usar-demo">Usar cuenta demo</button>
+  </form>
+
+  <form id="f-registro" class="form" novalidate hidden>
+    <label for="r-nombre">Nombre completo</label>
+    <input id="r-nombre" required autocomplete="name" placeholder="Ej.: Ana Pérez">
+    <div class="dos">
+      <div><label for="r-barrio">Barrio</label>
+        <select id="r-barrio"><option value="gir">Girardot</option><option value="nv">Nueva Venecia</option><option value="bar">Baracoa</option><option value="sc">Santa Coita</option></select></div>
+      <div><label for="r-canal">Canal preferido</label>
+        <select id="r-canal"><option value="push">App (push)</option><option value="sms">SMS</option><option value="voz">Llamada de voz</option></select></div>
+    </div>
+    <label for="r-usuario">Usuario</label>
+    <input id="r-usuario" required autocomplete="username" placeholder="mínimo 4 caracteres">
+    <label for="r-clave">Contraseña</label>
+    <input id="r-clave" type="password" required autocomplete="new-password" placeholder="mínimo 6 caracteres">
+    <label class="check"><input id="r-acepto" type="checkbox"> Autorizo el tratamiento de mi teléfono, barrio y canal para recibir alertas (Ley 1581 de 2012).</label>
+    <p class="error" id="r-error" role="alert" hidden></p>
+    <button class="btn solid lg" type="submit">Crear cuenta y entrar</button>
+    <p class="nota">Cuenta de demostración guardada solo en este navegador. No use una contraseña real.</p>
+  </form>
+</dialog>
+
+<script src="landing.js"></script>
 </body>
 </html>

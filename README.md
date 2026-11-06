@@ -3,9 +3,14 @@
 Sistema de Alerta Multicanal ante crecientes del río Magdalena (Magangué, Bolívar).
 Proyecto de Ingeniería I · UNAD · Grupo 62 · William Enrique Paba Ruenes · Etapa 4.
 
-**Demo:** https://takashi653.github.io/sam-magangue/  
-Usuario `demo123` · Contraseña `demo1234`
+**Demo:** https://takashi653.github.io/sam-magangue/
+Cuenta demo: usuario `demo123` · contraseña `demo1234`, o cree una cuenta ciudadana con **Registrarse**.
 
-Estructura: `index.html` (estructura), `styles.css` (estilos) y `app.js` (lógica y simulación en JavaScript, con React 18 desde CDN). Sin servidor ni compilación.
-Implementa los bloques E1–E4, P1–P5, S1–S5 y R1–R3 del diseño de la Etapa 3 y un banco de pruebas
-Monte Carlo reproducible que exporta la matriz de datos experimentales en CSV. Datos simulados con fines académicos.
+## Estructura
+| Archivo | Contenido |
+|---|---|
+| `index.html`, `landing.css`, `landing.js` | Página de inicio con regla limnimétrica animada, inicio de sesión y registro |
+| `app.html`, `styles.css`, `app.js` | Simulador: panel institucional, bitácora en vivo, notificaciones, reportes ciudadanos, banco de pruebas Monte Carlo, ecosistema y configuración |
+
+HTML, CSS y JavaScript sin servidor ni compilación (React 18 desde CDN en el simulador).
+Las cuentas se guardan solo en el navegador (localStorage). Datos simulados con fines académicos.
