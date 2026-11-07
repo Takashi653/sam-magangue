@@ -1,0 +1,3 @@
+# Bibliotecas de Wokwi
+DHT sensor library
+Adafruit Unified Sensor
