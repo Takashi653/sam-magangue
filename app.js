@@ -1317,58 +1317,60 @@ function Sensor({
   })() : lecturaSensor(s.obs);
   const hVis = manual ? r.hc : s.obs != null && s.obs >= 0 && s.obs <= 15 ? s.obs : s.h;
   const lv = manual ? r.hc >= 10 ? "roja" : r.hc >= 9 ? "naranja" : r.hc >= 8 ? "amarilla" : "verde" : NIVELES[s.nivel];
-  // escena: y de una cota en metros
-  const Y = m => 120 + (H_MONT + 0.4 - m) * 48,
+  // escena: y de una cota en metros (izquierda) y placa Arduino detallada (derecha)
+  const Y = m => 80 + (H_MONT + 0.4 - m) * 40,
     yAgua = Y(Math.max(5.6, Math.min(hVis ?? 6, 11)));
   const lineas = datos.serie.slice(Math.max(0, paso - 11), paso + 1).map(trama);
-  const LED = [["verde", "#2e7d32"], ["amarilla", "#f2b705"], ["naranja", "#e8710a"], ["roja", "#c62828"]];
-  return /*#__PURE__*/React.createElement("div", {
+  const LED = [["verde", "#2e7d32", "D2"], ["amarilla", "#f2b705", "D3"], ["naranja", "#e8710a", "D4"], ["roja", "#c62828", "D5"]];
+  const PINES = ["AREF", "GND", "13", "12", "~11", "~10", "~9", "8", "7", "~6", "~5", "~4", "~3", "2", "TX", "RX"];
+  const px = k => 512 + k * 14.5;
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "grid g2"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("h2", null, "Nodo de medici\xF3n E1 \xB7 Arduino Uno + sensor ultras\xF3nico HC-SR04"), /*#__PURE__*/React.createElement("svg", {
-    viewBox: "0 0 640 420",
+    viewBox: "0 0 760 340",
     style: {
       width: "100%",
       height: "auto"
     },
     role: "img",
-    "aria-label": "Sensor ultras\xF3nico en el puente midiendo la distancia al agua"
+    "aria-label": "Sensor ultras\xF3nico en el puente conectado a un Arduino Uno"
   }, /*#__PURE__*/React.createElement("rect", {
     x: "0",
     y: yAgua,
-    width: "640",
-    height: 420 - yAgua,
+    width: "470",
+    height: 340 - yAgua,
     fill: "var(--rio)"
   }), /*#__PURE__*/React.createElement("path", {
-    d: `M0 ${yAgua} q20 -5 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0`,
+    d: `M0 ${yAgua} q15 -5 30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0 t30 0`,
     fill: "none",
     stroke: "#ffffff99",
     strokeWidth: "2"
   }), /*#__PURE__*/React.createElement("rect", {
-    x: "120",
-    y: "100",
-    width: "420",
+    x: "80",
+    y: "56",
+    width: "390",
     height: "16",
     rx: "3",
     fill: "#8a8f98"
   }), /*#__PURE__*/React.createElement("text", {
-    x: "330",
-    y: "112",
+    x: "275",
+    y: "68",
     fontSize: "11",
     fill: "#fff",
     textAnchor: "middle"
-  }, "Puente / muelle \xB7 cota del sensor ", fmt(H_MONT, 2), " m"), /*#__PURE__*/React.createElement("rect", {
-    x: "150",
-    y: "116",
+  }, "Puente \xB7 cota del sensor ", fmt(H_MONT, 2), " m"), /*#__PURE__*/React.createElement("rect", {
+    x: "110",
+    y: "72",
     width: "12",
-    height: "304",
+    height: "268",
     fill: "#9aa0a8"
   }), [6, 7, 8, 9, 10, 11].map(m => /*#__PURE__*/React.createElement("g", {
     key: m
   }, /*#__PURE__*/React.createElement("line", {
     x1: "40",
-    x2: "56",
+    x2: "54",
     y1: Y(m),
     y2: Y(m),
     stroke: "var(--ink)"
@@ -1379,49 +1381,55 @@ function Sensor({
     textAnchor: "end",
     fill: "var(--ink)"
   }, m, " m"))), /*#__PURE__*/React.createElement("line", {
-    x1: "48",
-    x2: "48",
+    x1: "47",
+    x2: "47",
     y1: Y(11.2),
-    y2: "420",
+    y2: "340",
     stroke: "var(--ink)"
-  }), [[8, "var(--amarilla)"], [9, "var(--naranja)"], [10, "var(--roja)"]].map(([m, c]) => /*#__PURE__*/React.createElement("line", {
-    key: m,
-    x1: "56",
-    x2: "640",
+  }), [[8, "var(--amarilla)", "amarilla"], [9, "var(--naranja)", "naranja"], [10, "var(--roja)", "roja"]].map(([m, c, t]) => /*#__PURE__*/React.createElement("g", {
+    key: m
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: "54",
+    x2: "470",
     y1: Y(m),
     y2: Y(m),
     stroke: c,
     strokeDasharray: "6 5"
-  })), /*#__PURE__*/React.createElement("rect", {
-    x: "300",
-    y: "118",
-    width: "64",
-    height: "26",
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "58",
+    y: Y(m) - 3,
+    fontSize: "9",
+    fill: c
+  }, "cota ", t))), /*#__PURE__*/React.createElement("rect", {
+    x: "240",
+    y: "74",
+    width: "80",
+    height: "32",
     rx: "3",
     fill: "#1e5aa8"
   }), /*#__PURE__*/React.createElement("circle", {
-    cx: "316",
-    cy: "136",
-    r: "9",
+    cx: "260",
+    cy: "94",
+    r: "11",
     fill: "#cfd6de",
     stroke: "#333"
   }), /*#__PURE__*/React.createElement("circle", {
-    cx: "348",
-    cy: "136",
-    r: "9",
+    cx: "300",
+    cy: "94",
+    r: "11",
     fill: "#cfd6de",
     stroke: "#333"
   }), /*#__PURE__*/React.createElement("text", {
-    x: "332",
-    y: "127",
-    fontSize: "7",
+    x: "280",
+    y: "83",
+    fontSize: "8",
     fill: "#fff",
     textAnchor: "middle"
   }, "HC-SR04"), r.eco > 0 && /*#__PURE__*/React.createElement("g", {
     className: "ondas"
   }, [0, 1, 2].map(k => /*#__PURE__*/React.createElement("path", {
     key: k,
-    d: "M312 150 q20 10 40 0",
+    d: "M258 110 q22 10 44 0",
     fill: "none",
     stroke: "var(--pri2)",
     strokeWidth: "2",
@@ -1429,92 +1437,235 @@ function Sensor({
       animationDelay: k * 0.4 + "s"
     }
   }))), /*#__PURE__*/React.createElement("line", {
-    x1: "332",
-    x2: "332",
-    y1: "146",
+    x1: "280",
+    x2: "280",
+    y1: "106",
     y2: yAgua,
     stroke: "var(--pri2)",
     strokeDasharray: "4 4"
   }), r.d != null && /*#__PURE__*/React.createElement("text", {
-    x: "340",
-    y: (146 + yAgua) / 2,
+    x: "288",
+    y: Math.max(130, (106 + yAgua) / 2),
     fontSize: "12",
     fill: "var(--ink)"
   }, "d = ", fmt(r.d, 3), " m \xB7 eco = ", r.eco.toLocaleString("es-CO"), " \xB5s"), r.eco === 0 && /*#__PURE__*/React.createElement("text", {
-    x: "340",
-    y: "180",
+    x: "288",
+    y: "140",
     fontSize: "12",
     fill: "var(--roja)"
   }, "sin eco (timeout 30 ms)"), /*#__PURE__*/React.createElement("text", {
-    x: "180",
+    x: "135",
     y: yAgua - 6,
-    fontSize: "12",
+    fontSize: "13",
     fill: "var(--ink)",
     fontWeight: "700"
   }, "h = ", fmt(hVis, 2), " m"), /*#__PURE__*/React.createElement("path", {
-    d: "M364 128 H440 V80",
+    d: `M320 84 H462 V8 H${px(6)} V30`,
     fill: "none",
     stroke: "#e8710a",
-    strokeWidth: "2"
+    strokeWidth: "2.5"
   }), /*#__PURE__*/React.createElement("path", {
-    d: "M364 136 H452 V80",
+    d: `M320 98 H470 V14 H${px(5)} V30`,
     fill: "none",
     stroke: "#7b3fa0",
+    strokeWidth: "2.5"
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: "490",
+    y: "20",
+    width: "260",
+    height: "170",
+    rx: "8",
+    fill: "#00878f",
+    stroke: "#005f66",
     strokeWidth: "2"
   }), /*#__PURE__*/React.createElement("rect", {
-    x: "420",
-    y: "10",
-    width: "150",
-    height: "70",
-    rx: "6",
-    fill: "#00878f"
+    x: "505",
+    y: "26",
+    width: "236",
+    height: "14",
+    rx: "2",
+    fill: "#1b1b1b"
+  }), PINES.map((t, k) => /*#__PURE__*/React.createElement("g", {
+    key: t
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: px(k) - 3,
+    y: "29",
+    width: "6",
+    height: "8",
+    fill: k === 5 || k === 6 ? "#ffd54a" : "#9aa0a8"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: px(k),
+    y: "50",
+    fontSize: "6.5",
+    fill: "#fff",
+    textAnchor: "middle"
+  }, t))), /*#__PURE__*/React.createElement("text", {
+    x: px(6) + 6,
+    y: "60",
+    fontSize: "8",
+    fill: "#ffd54a",
+    textAnchor: "middle"
+  }, "TRIG"), /*#__PURE__*/React.createElement("text", {
+    x: px(5) - 6,
+    y: "68",
+    fontSize: "8",
+    fill: "#ffd54a",
+    textAnchor: "middle"
+  }, "ECHO"), /*#__PURE__*/React.createElement("rect", {
+    x: "478",
+    y: "70",
+    width: "34",
+    height: "34",
+    rx: "2",
+    fill: "#b8bec6",
+    stroke: "#666"
   }), /*#__PURE__*/React.createElement("text", {
     x: "495",
-    y: "32",
-    fontSize: "12",
+    y: "118",
+    fontSize: "7",
+    fill: "#fff",
+    textAnchor: "middle"
+  }, "USB"), /*#__PURE__*/React.createElement("rect", {
+    x: "480",
+    y: "140",
+    width: "26",
+    height: "30",
+    rx: "3",
+    fill: "#111"
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: "585",
+    y: "118",
+    width: "120",
+    height: "26",
+    rx: "2",
+    fill: "#1b1b1b"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "645",
+    y: "135",
+    fontSize: "9",
+    fill: "#ccc",
+    textAnchor: "middle"
+  }, "ATmega328P"), /*#__PURE__*/React.createElement("text", {
+    x: "600",
+    y: "98",
+    fontSize: "22",
+    fill: "#fff",
+    fontWeight: "700",
+    textAnchor: "middle"
+  }, "UNO"), /*#__PURE__*/React.createElement("text", {
+    x: "680",
+    y: "98",
+    fontSize: "10",
     fill: "#fff",
     textAnchor: "middle",
-    fontWeight: "700"
-  }, "Arduino Uno"), /*#__PURE__*/React.createElement("text", {
-    x: "495",
-    y: "47",
-    fontSize: "9",
-    fill: "#fff",
-    textAnchor: "middle"
-  }, "TRIG D9 \xB7 ECHO D10 \xB7 DHT22 D7"), LED.map(([n, c], k) => /*#__PURE__*/React.createElement("g", {
-    key: n
-  }, /*#__PURE__*/React.createElement("circle", {
-    cx: 444 + k * 34,
-    cy: "64",
-    r: "7",
-    fill: lv === n ? c : "#33404d",
-    stroke: "#111"
-  }), lv === n && /*#__PURE__*/React.createElement("circle", {
-    cx: 444 + k * 34,
-    cy: "64",
-    r: "12",
-    fill: c,
-    opacity: ".35"
-  }))), /*#__PURE__*/React.createElement("rect", {
-    x: "586",
-    y: "20",
-    width: "34",
-    height: "18",
-    rx: "3",
-    fill: "#222"
+    letterSpacing: "1"
+  }, "ARDUINO"), /*#__PURE__*/React.createElement("rect", {
+    x: "560",
+    y: "168",
+    width: "150",
+    height: "12",
+    rx: "2",
+    fill: "#1b1b1b"
   }), /*#__PURE__*/React.createElement("text", {
-    x: "603",
-    y: "33",
-    fontSize: "8",
+    x: "635",
+    y: "177",
+    fontSize: "7",
+    fill: "#aaa",
+    textAnchor: "middle"
+  }, "POWER \xB7 ANALOG IN"), /*#__PURE__*/React.createElement("circle", {
+    cx: "735",
+    cy: "60",
+    r: "3",
+    fill: "#7fff7f"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "735",
+    y: "74",
+    fontSize: "6",
     fill: "#fff",
     textAnchor: "middle"
-  }, "DHT22"), /*#__PURE__*/React.createElement("text", {
-    x: "603",
-    y: "52",
-    fontSize: "10",
+  }, "ON"), LED.map(([n, c, pin], k) => {
+    const x = 520 + k * 48,
+      on = lv === n;
+    return /*#__PURE__*/React.createElement("g", {
+      key: n
+    }, /*#__PURE__*/React.createElement("line", {
+      x1: x,
+      x2: x,
+      y1: "190",
+      y2: "236",
+      stroke: "#9aa0a8",
+      strokeWidth: "2"
+    }), /*#__PURE__*/React.createElement("rect", {
+      x: x - 4,
+      y: "204",
+      width: "8",
+      height: "16",
+      rx: "2",
+      fill: "#d8c3a5",
+      stroke: "#8a6d3b"
+    }), on && /*#__PURE__*/React.createElement("circle", {
+      cx: x,
+      cy: "248",
+      r: "17",
+      fill: c,
+      opacity: ".35"
+    }), /*#__PURE__*/React.createElement("circle", {
+      cx: x,
+      cy: "248",
+      r: "10",
+      fill: on ? c : "#3a4654",
+      stroke: "#111"
+    }), /*#__PURE__*/React.createElement("text", {
+      x: x,
+      y: "274",
+      fontSize: "9",
+      fill: "var(--ink)",
+      textAnchor: "middle"
+    }, pin));
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "725",
+    cy: "248",
+    r: "14",
+    fill: "#1b1b1b",
+    stroke: "#555"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "725",
+    cy: "248",
+    r: "4",
+    fill: "#555"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "725",
+    y: "274",
+    fontSize: "9",
     fill: "var(--ink)",
     textAnchor: "middle"
-  }, fmt(T_AIRE, 1), " \xB0C")), /*#__PURE__*/React.createElement("div", {
+  }, "zumbador D6"), /*#__PURE__*/React.createElement("rect", {
+    x: "490",
+    y: "290",
+    width: "38",
+    height: "44",
+    rx: "4",
+    fill: "#f4f4f4",
+    stroke: "#999"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "509",
+    y: "315",
+    fontSize: "8",
+    fill: "#333",
+    textAnchor: "middle"
+  }, "DHT22"), /*#__PURE__*/React.createElement("text", {
+    x: "536",
+    y: "309",
+    fontSize: "10",
+    fill: "var(--ink)"
+  }, "D7 \xB7 ", fmt(T_AIRE, 1), " \xB0C \u2192 c = ", fmt(C_SON, 1), " m/s"), /*#__PURE__*/React.createElement("text", {
+    x: "536",
+    y: "325",
+    fontSize: "10",
+    fill: "var(--ink)"
+  }, "Sem\xE1foro: ", /*#__PURE__*/React.createElement("tspan", {
+    fontWeight: "700"
+  }, TXT[lv]))), /*#__PURE__*/React.createElement("div", {
     className: "row",
     style: {
       marginTop: 8
@@ -1555,23 +1706,41 @@ function Sensor({
     className: "serial"
   }, manual ? `{"eco_us":${r.eco},"T_C":${T_AIRE.toFixed(1)},"d_m":${r.d.toFixed(3)},"h_m":${r.hc.toFixed(3)}}` : lineas.join("\n")), /*#__PURE__*/React.createElement("p", {
     className: "small"
-  }, "Cada trama JSON es la que el nodo env\xEDa a la API de ingesta (P1).")), /*#__PURE__*/React.createElement("div", {
-    className: "card"
-  }, /*#__PURE__*/React.createElement("h2", null, "Circuito en Wokwi"), /*#__PURE__*/React.createElement("p", {
-    className: "small"
-  }, "El mismo nodo est\xE1 montado en el simulador de Arduino Wokwi con HC-SR04, DHT22, 4 LEDs y zumbador. El c\xF3digo (sketch.ino) y el diagrama (diagram.json) est\xE1n en el repositorio."), /*#__PURE__*/React.createElement("div", {
+  }, "Cada trama JSON es la que el nodo env\xEDa a la API de ingesta (P1).")))), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    style: {
+      margin: 0
+    }
+  }, "Circuito en vivo \xB7 simulador Arduino Wokwi"), /*#__PURE__*/React.createElement("div", {
     className: "row"
   }, /*#__PURE__*/React.createElement("a", {
-    className: "btn",
+    className: "btn sec",
     href: WOKWI_URL,
     target: "_blank",
     rel: "noopener"
-  }, "Abrir en Wokwi"), /*#__PURE__*/React.createElement("a", {
+  }, "Abrir en pesta\xF1a nueva"), /*#__PURE__*/React.createElement("a", {
     className: "btn sec",
     href: SKETCH_URL,
     target: "_blank",
     rel: "noopener"
-  }, "Ver c\xF3digo")))));
+  }, "Ver c\xF3digo"))), /*#__PURE__*/React.createElement("p", {
+    className: "small"
+  }, "Pulse \u25B6 para compilar y ejecutar el sketch. Luego haga clic en el HC-SR04 y mueva el control ", /*#__PURE__*/React.createElement("b", null, "distance"), ": al acercar el agua al sensor el nivel sube y se encienden los LEDs amarillo, naranja y rojo; el monitor serial muestra cada trama JSON."), /*#__PURE__*/React.createElement("iframe", {
+    className: "wokwi",
+    src: WOKWI_URL + "?embed=1",
+    title: "Nodo E1 en Wokwi: Arduino Uno con HC-SR04",
+    loading: "lazy",
+    allow: "fullscreen"
+  })));
 }
 function Ecosistema() {
   const filas = [["E1", "Nivel del río h(t)", "Nodo Arduino Uno + HC-SR04 (pestaña Sensor E1 y Wokwi); serie con ruido σ = 1 cm y fallas 2 %", "IDEAM / UNGRD / nodo IoT en el puente"], ["E2", "Perfil del usuario", "10 526 hogares con perfil smartphone, básico o sin celular", "Registro con consentimiento (Ley 1581)"], ["E3", "Reportes ciudadanos", "Formulario de reporte con validación cruzada", "Comunidad de Girardot, Nueva Venecia, Baracoa, Santa Coita"], ["E4", "Parámetros de control", "Pestaña Configuración (umbrales, tmin, tasas)", "Cotas oficiales del IDEAM"], ["P1", "Ingesta y validación", "Rango [0,15] m, salto ≤ 0,5 m / 10 min, última lectura válida", "API REST"], ["P2", "Motor de reglas y pronóstico", "dh/dt en 1 h, tiempo a umbral, histéresis y confirmación", "Reglas explicables (IEEE)"], ["P3", "Base de datos", "Estado en memoria + exportación CSV", "PostgreSQL/PostGIS en la versión final"], ["P4", "Gestor de notificaciones", "Colas a 50 msg/s, acuse en 5 min y 3 reintentos", "Pasarela SMS, servicio push, IVR"], ["P5", "Mapa de riesgo y rutas", "Mapa esquemático SVG con rutas a puntos de encuentro", "Servicio de mapas / PostGIS"], ["S1–S3", "Push, SMS y voz", "Maqueta de celular y síntesis de voz del navegador", "Operadores móviles, altavoces"], ["S5", "Panel institucional", "Pestaña Panel", "Alcaldía de Magangué, UNGRD, CMGRD"], ["R1–R3", "Acuse, validación ciudadana y KPIs", "Reintentos, regla R2 y banco de pruebas", "Recalibración de umbrales"]];
