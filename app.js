@@ -1299,9 +1299,98 @@ function trama(s) {
   const r = lecturaSensor(s.obs);
   return `{"n":${s.i + 1},"eco_us":${r.eco},"T_C":${T_AIRE.toFixed(1)},"c_ms":${C_SON.toFixed(1)},"d_m":${r.d == null ? "null" : r.d.toFixed(3)},"h_m":${s.h == null ? "null" : s.h.toFixed(3)},"dhdt_mh":${s.dhdt.toFixed(3)},"estado":"${s.valido ? "ok" : s.motivo}","alerta":"${NIVELES[s.nivel]}"}`;
 }
+// Barra de simulación reutilizable (Panel y Sensor E1)
+function Controles({
+  esc,
+  setEsc,
+  seed,
+  setSeed,
+  paso,
+  setPaso,
+  play,
+  setPlay,
+  vel,
+  setVel,
+  datos
+}) {
+  const s = datos.serie[paso];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      display: "grid",
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "row"
+  }, /*#__PURE__*/React.createElement("label", null, "Escenario ", /*#__PURE__*/React.createElement("select", {
+    value: esc,
+    onChange: e => {
+      setEsc(e.target.value);
+      setPaso(0);
+    }
+  }, Object.entries(ESCENARIOS).map(([k, v]) => /*#__PURE__*/React.createElement("option", {
+    key: k,
+    value: k
+  }, v.nombre)))), /*#__PURE__*/React.createElement("label", null, "Semilla ", /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: seed,
+    onChange: e => {
+      setSeed(+e.target.value || 1);
+      setPaso(0);
+    },
+    style: {
+      width: 80
+    }
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn",
+    onClick: () => {
+      if (paso >= N_STEPS - 1) setPaso(0);
+      setPlay(!play);
+    }
+  }, play ? "⏸ Pausar" : "▶ Simular"), /*#__PURE__*/React.createElement("button", {
+    className: "btn sec",
+    onClick: () => {
+      setPaso(0);
+      setPlay(false);
+    }
+  }, "\u27F2 Reiniciar"), /*#__PURE__*/React.createElement("button", {
+    className: "btn sec",
+    onClick: () => setPaso(Math.min(N_STEPS - 1, paso + 1))
+  }, "+10 min"), /*#__PURE__*/React.createElement("label", null, "Velocidad ", /*#__PURE__*/React.createElement("select", {
+    value: vel,
+    onChange: e => setVel(+e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: 400
+  }, "1\xD7"), /*#__PURE__*/React.createElement("option", {
+    value: 120
+  }, "4\xD7"), /*#__PURE__*/React.createElement("option", {
+    value: 30
+  }, "16\xD7")))), /*#__PURE__*/React.createElement("div", {
+    className: "small"
+  }, "t = ", fmt(s.t, 1), " h \xB7 lectura ", paso + 1, "/", N_STEPS)), /*#__PURE__*/React.createElement("input", {
+    type: "range",
+    min: "0",
+    max: N_STEPS - 1,
+    value: paso,
+    onChange: e => {
+      setPlay(false);
+      setPaso(+e.target.value);
+    },
+    "aria-label": "Momento de la simulaci\xF3n",
+    style: {
+      width: "100%"
+    }
+  }));
+}
 function Sensor({
   datos,
-  paso
+  paso,
+  ctl
 }) {
   const [manual, setManual] = useState(false),
     [cm, setCm] = useState(250);
@@ -1324,8 +1413,11 @@ function Sensor({
   const LED = [["verde", "#2e7d32", "D2"], ["amarilla", "#f2b705", "D3"], ["naranja", "#e8710a", "D4"], ["roja", "#c62828", "D5"]];
   const PINES = ["AREF", "GND", "13", "12", "~11", "~10", "~9", "8", "7", "~6", "~5", "~4", "~3", "2", "TX", "RX"];
   const px = k => 512 + k * 14.5;
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "grid g2"
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Controles, ctl), /*#__PURE__*/React.createElement("div", {
+    className: "grid g2",
+    style: {
+      marginTop: 14
+    }
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("h2", null, "Nodo de medici\xF3n E1 \xB7 Arduino Uno + sensor ultras\xF3nico HC-SR04"), /*#__PURE__*/React.createElement("svg", {
@@ -1689,7 +1781,7 @@ function Sensor({
     "aria-label": "Distancia al agua en cm"
   }), /*#__PURE__*/React.createElement("span", null, cm, " cm"))), /*#__PURE__*/React.createElement("p", {
     className: "small"
-  }, manual ? "Modo manual: mueva la distancia como en el control del HC-SR04 de Wokwi." : "El sensor sigue la simulación del Panel institucional: avance o reproduzca la serie allí y vea aquí cada lectura.", " Distancia d = c \xB7 t_eco / 2 con c = 331,3 + 0,606\xB7T = ", fmt(C_SON, 1), " m/s; nivel h = ", fmt(H_MONT, 1), " \u2212 d.")), /*#__PURE__*/React.createElement("div", {
+  }, manual ? "Modo manual: mueva la distancia como en el control del HC-SR04 de Wokwi." : "Pulse ▶ Simular para ver cómo el sensor sigue la creciente lectura por lectura (cada lectura son 10 min del río); también puede arrastrar la barra de tiempo.", " Distancia d = c \xB7 t_eco / 2 con c = 331,3 + 0,606\xB7T = ", fmt(C_SON, 1), " m/s; nivel h = ", fmt(H_MONT, 1), " \u2212 d.")), /*#__PURE__*/React.createElement("div", {
     className: "grid",
     style: {
       alignContent: "start"
@@ -2085,7 +2177,20 @@ function App() {
     user
   }), tab === "sensor" && /*#__PURE__*/React.createElement(Sensor, {
     datos: datos,
-    paso: paso
+    paso: paso,
+    ctl: {
+      esc,
+      setEsc,
+      seed,
+      setSeed,
+      paso,
+      setPaso,
+      play,
+      setPlay,
+      vel,
+      setVel,
+      datos
+    }
   }), tab === "notif" && /*#__PURE__*/React.createElement(Notificaciones, {
     cfg: cfg,
     datos: datos,
