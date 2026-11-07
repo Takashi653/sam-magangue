@@ -1278,7 +1278,7 @@ function Experimentos({
 const H_MONT = 11.0,
   T_AIRE = 30.0,
   C_SON = 331.3 + 0.606 * T_AIRE; // velocidad del sonido a 30 °C
-const WOKWI_URL = "https://wokwi.com/projects/new/arduino-uno";
+const WOKWI_URL = "https://wokwi.com/projects/479990588756527105";
 const SKETCH_URL = "https://github.com/Takashi653/sam-magangue/tree/main/wokwi";
 function lecturaSensor(o) {
   if (o == null) return {
@@ -1286,8 +1286,9 @@ function lecturaSensor(o) {
     d: null,
     hc: null
   }; // sin eco (timeout)
-  const d = H_MONT - o,
-    eco = Math.max(0, Math.round(2 * d / C_SON * 1e6));
+  let d = H_MONT - o;
+  if (d < 0.05) d = 0.25 + -d % 1; // pico espurio: eco temprano por basura o aves
+  const eco = Math.round(2 * d / C_SON * 1e6);
   return {
     eco,
     d,
