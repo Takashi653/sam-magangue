@@ -45,6 +45,8 @@ const uint8_t VENTANA = 6;                   // 6 lecturas = 1 h
 float historial[VENTANA];
 uint8_t nHist = 0;
 float ultimoValido = NAN;
+float candidato = NAN;                       // posible nuevo nivel tras un salto
+uint8_t nSaltos = 0;
 uint8_t nivelAlerta = 0;                     // 0 verde, 1 amarilla, 2 naranja, 3 roja
 uint8_t cuentaBajada = 0;
 unsigned long nLectura = 0, nDescartes = 0;
@@ -114,9 +116,12 @@ void loop() {
   bool valido = true;
   if (isnan(hCrudo))                          { valido = false; estado = "sin_eco"; }
   else if (hCrudo < 0 || hCrudo > 15)         { valido = false; estado = "fuera_de_rango"; }
-  else if (!isnan(ultimoValido) && fabs(hCrudo - ultimoValido) > SALTO_MAX)
-                                              { valido = false; estado = "salto"; }
-  if (valido) ultimoValido = hCrudo; else nDescartes++;
+  else if (!isnan(ultimoValido) && fabs(hCrudo - ultimoValido) > SALTO_MAX) {
+    // un pico aislado se descarta; si 3 lecturas seguidas coinciden, el cambio es real
+    if (!isnan(candidato) && fabs(hCrudo - candidato) <= SALTO_MAX && ++nSaltos >= 3) { nSaltos = 0; estado = "resincronizado"; }
+    else { if (isnan(candidato) || fabs(hCrudo - candidato) > SALTO_MAX) nSaltos = 1; candidato = hCrudo; valido = false; estado = "salto"; }
+  }
+  if (valido) { ultimoValido = hCrudo; candidato = NAN; if (strcmp(estado, "ok") == 0) nSaltos = 0; } else nDescartes++;
   float h = ultimoValido;
 
   // P2: tasa de cambio en la última hora (6 lecturas)
@@ -134,7 +139,7 @@ void loop() {
   if (h >= U_RO || tRo <= T_MIN_H) objetivo = 3;
 
   if (objetivo > nivelAlerta) { nivelAlerta = objetivo; cuentaBajada = 0; }
-  else if (objetivo < nivelAlerta) {
+  else if (objetivo < nivelAlerta && dhdt <= 0) {   // solo baja si el río ya no sube
     float umbralActual = (nivelAlerta == 1) ? U_AM : (nivelAlerta == 2) ? U_NA : U_RO;
     if (h < umbralActual - HISTERESIS) { if (++cuentaBajada >= 3) { nivelAlerta = objetivo; cuentaBajada = 0; } }
     else cuentaBajada = 0;
