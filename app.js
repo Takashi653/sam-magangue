@@ -1272,8 +1272,308 @@ function Experimentos({
     className: r.fpNaranja ? "no" : ""
   }, r.fpNaranja ? "Sí" : "No"), /*#__PURE__*/React.createElement("td", null, r.invalidas))))))));
 }
+
+// E1 físico: nodo Arduino Uno + HC-SR04 montado en el puente a H_MONT metros.
+// Convierte cada lectura de la simulación en el eco que mediría el sensor.
+const H_MONT = 11.0,
+  T_AIRE = 30.0,
+  C_SON = 331.3 + 0.606 * T_AIRE; // velocidad del sonido a 30 °C
+const WOKWI_URL = "https://wokwi.com/projects/new/arduino-uno";
+const SKETCH_URL = "https://github.com/Takashi653/sam-magangue/tree/main/wokwi";
+function lecturaSensor(o) {
+  if (o == null) return {
+    eco: 0,
+    d: null,
+    hc: null
+  }; // sin eco (timeout)
+  const d = H_MONT - o,
+    eco = Math.max(0, Math.round(2 * d / C_SON * 1e6));
+  return {
+    eco,
+    d,
+    hc: H_MONT - C_SON * eco * 1e-6 / 2
+  };
+}
+function trama(s) {
+  const r = lecturaSensor(s.obs);
+  return `{"n":${s.i + 1},"eco_us":${r.eco},"T_C":${T_AIRE.toFixed(1)},"c_ms":${C_SON.toFixed(1)},"d_m":${r.d == null ? "null" : r.d.toFixed(3)},"h_m":${s.h == null ? "null" : s.h.toFixed(3)},"dhdt_mh":${s.dhdt.toFixed(3)},"estado":"${s.valido ? "ok" : s.motivo}","alerta":"${NIVELES[s.nivel]}"}`;
+}
+function Sensor({
+  datos,
+  paso
+}) {
+  const [manual, setManual] = useState(false),
+    [cm, setCm] = useState(250);
+  const s = datos.serie[paso];
+  const r = manual ? (() => {
+    const d = cm / 100,
+      eco = Math.round(2 * d / C_SON * 1e6);
+    return {
+      eco,
+      d,
+      hc: H_MONT - d
+    };
+  })() : lecturaSensor(s.obs);
+  const hVis = manual ? r.hc : s.obs != null && s.obs >= 0 && s.obs <= 15 ? s.obs : s.h;
+  const lv = manual ? r.hc >= 10 ? "roja" : r.hc >= 9 ? "naranja" : r.hc >= 8 ? "amarilla" : "verde" : NIVELES[s.nivel];
+  // escena: y de una cota en metros
+  const Y = m => 120 + (H_MONT + 0.4 - m) * 48,
+    yAgua = Y(Math.max(5.6, Math.min(hVis ?? 6, 11)));
+  const lineas = datos.serie.slice(Math.max(0, paso - 11), paso + 1).map(trama);
+  const LED = [["verde", "#2e7d32"], ["amarilla", "#f2b705"], ["naranja", "#e8710a"], ["roja", "#c62828"]];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "grid g2"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("h2", null, "Nodo de medici\xF3n E1 \xB7 Arduino Uno + sensor ultras\xF3nico HC-SR04"), /*#__PURE__*/React.createElement("svg", {
+    viewBox: "0 0 640 420",
+    style: {
+      width: "100%",
+      height: "auto"
+    },
+    role: "img",
+    "aria-label": "Sensor ultras\xF3nico en el puente midiendo la distancia al agua"
+  }, /*#__PURE__*/React.createElement("rect", {
+    x: "0",
+    y: yAgua,
+    width: "640",
+    height: 420 - yAgua,
+    fill: "var(--rio)"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: `M0 ${yAgua} q20 -5 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0 t40 0`,
+    fill: "none",
+    stroke: "#ffffff99",
+    strokeWidth: "2"
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: "120",
+    y: "100",
+    width: "420",
+    height: "16",
+    rx: "3",
+    fill: "#8a8f98"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "330",
+    y: "112",
+    fontSize: "11",
+    fill: "#fff",
+    textAnchor: "middle"
+  }, "Puente / muelle \xB7 cota del sensor ", fmt(H_MONT, 2), " m"), /*#__PURE__*/React.createElement("rect", {
+    x: "150",
+    y: "116",
+    width: "12",
+    height: "304",
+    fill: "#9aa0a8"
+  }), [6, 7, 8, 9, 10, 11].map(m => /*#__PURE__*/React.createElement("g", {
+    key: m
+  }, /*#__PURE__*/React.createElement("line", {
+    x1: "40",
+    x2: "56",
+    y1: Y(m),
+    y2: Y(m),
+    stroke: "var(--ink)"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "34",
+    y: Y(m) + 4,
+    fontSize: "11",
+    textAnchor: "end",
+    fill: "var(--ink)"
+  }, m, " m"))), /*#__PURE__*/React.createElement("line", {
+    x1: "48",
+    x2: "48",
+    y1: Y(11.2),
+    y2: "420",
+    stroke: "var(--ink)"
+  }), [[8, "var(--amarilla)"], [9, "var(--naranja)"], [10, "var(--roja)"]].map(([m, c]) => /*#__PURE__*/React.createElement("line", {
+    key: m,
+    x1: "56",
+    x2: "640",
+    y1: Y(m),
+    y2: Y(m),
+    stroke: c,
+    strokeDasharray: "6 5"
+  })), /*#__PURE__*/React.createElement("rect", {
+    x: "300",
+    y: "118",
+    width: "64",
+    height: "26",
+    rx: "3",
+    fill: "#1e5aa8"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "316",
+    cy: "136",
+    r: "9",
+    fill: "#cfd6de",
+    stroke: "#333"
+  }), /*#__PURE__*/React.createElement("circle", {
+    cx: "348",
+    cy: "136",
+    r: "9",
+    fill: "#cfd6de",
+    stroke: "#333"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "332",
+    y: "127",
+    fontSize: "7",
+    fill: "#fff",
+    textAnchor: "middle"
+  }, "HC-SR04"), r.eco > 0 && /*#__PURE__*/React.createElement("g", {
+    className: "ondas"
+  }, [0, 1, 2].map(k => /*#__PURE__*/React.createElement("path", {
+    key: k,
+    d: "M312 150 q20 10 40 0",
+    fill: "none",
+    stroke: "var(--pri2)",
+    strokeWidth: "2",
+    style: {
+      animationDelay: k * 0.4 + "s"
+    }
+  }))), /*#__PURE__*/React.createElement("line", {
+    x1: "332",
+    x2: "332",
+    y1: "146",
+    y2: yAgua,
+    stroke: "var(--pri2)",
+    strokeDasharray: "4 4"
+  }), r.d != null && /*#__PURE__*/React.createElement("text", {
+    x: "340",
+    y: (146 + yAgua) / 2,
+    fontSize: "12",
+    fill: "var(--ink)"
+  }, "d = ", fmt(r.d, 3), " m \xB7 eco = ", r.eco.toLocaleString("es-CO"), " \xB5s"), r.eco === 0 && /*#__PURE__*/React.createElement("text", {
+    x: "340",
+    y: "180",
+    fontSize: "12",
+    fill: "var(--roja)"
+  }, "sin eco (timeout 30 ms)"), /*#__PURE__*/React.createElement("text", {
+    x: "180",
+    y: yAgua - 6,
+    fontSize: "12",
+    fill: "var(--ink)",
+    fontWeight: "700"
+  }, "h = ", fmt(hVis, 2), " m"), /*#__PURE__*/React.createElement("path", {
+    d: "M364 128 H440 V80",
+    fill: "none",
+    stroke: "#e8710a",
+    strokeWidth: "2"
+  }), /*#__PURE__*/React.createElement("path", {
+    d: "M364 136 H452 V80",
+    fill: "none",
+    stroke: "#7b3fa0",
+    strokeWidth: "2"
+  }), /*#__PURE__*/React.createElement("rect", {
+    x: "420",
+    y: "10",
+    width: "150",
+    height: "70",
+    rx: "6",
+    fill: "#00878f"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "495",
+    y: "32",
+    fontSize: "12",
+    fill: "#fff",
+    textAnchor: "middle",
+    fontWeight: "700"
+  }, "Arduino Uno"), /*#__PURE__*/React.createElement("text", {
+    x: "495",
+    y: "47",
+    fontSize: "9",
+    fill: "#fff",
+    textAnchor: "middle"
+  }, "TRIG D9 \xB7 ECHO D10 \xB7 DHT22 D7"), LED.map(([n, c], k) => /*#__PURE__*/React.createElement("g", {
+    key: n
+  }, /*#__PURE__*/React.createElement("circle", {
+    cx: 444 + k * 34,
+    cy: "64",
+    r: "7",
+    fill: lv === n ? c : "#33404d",
+    stroke: "#111"
+  }), lv === n && /*#__PURE__*/React.createElement("circle", {
+    cx: 444 + k * 34,
+    cy: "64",
+    r: "12",
+    fill: c,
+    opacity: ".35"
+  }))), /*#__PURE__*/React.createElement("rect", {
+    x: "586",
+    y: "20",
+    width: "34",
+    height: "18",
+    rx: "3",
+    fill: "#222"
+  }), /*#__PURE__*/React.createElement("text", {
+    x: "603",
+    y: "33",
+    fontSize: "8",
+    fill: "#fff",
+    textAnchor: "middle"
+  }, "DHT22"), /*#__PURE__*/React.createElement("text", {
+    x: "603",
+    y: "52",
+    fontSize: "10",
+    fill: "var(--ink)",
+    textAnchor: "middle"
+  }, fmt(T_AIRE, 1), " \xB0C")), /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "row"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: manual,
+    onChange: e => setManual(e.target.checked)
+  }), " Probar el sensor a mano (como en Wokwi)"), manual && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
+    type: "range",
+    min: "2",
+    max: "400",
+    value: cm,
+    onChange: e => setCm(+e.target.value),
+    style: {
+      flex: 1,
+      minWidth: 160
+    },
+    "aria-label": "Distancia al agua en cm"
+  }), /*#__PURE__*/React.createElement("span", null, cm, " cm"))), /*#__PURE__*/React.createElement("p", {
+    className: "small"
+  }, manual ? "Modo manual: mueva la distancia como en el control del HC-SR04 de Wokwi." : "El sensor sigue la simulación del Panel institucional: avance o reproduzca la serie allí y vea aquí cada lectura.", " Distancia d = c \xB7 t_eco / 2 con c = 331,3 + 0,606\xB7T = ", fmt(C_SON, 1), " m/s; nivel h = ", fmt(H_MONT, 1), " \u2212 d.")), /*#__PURE__*/React.createElement("div", {
+    className: "grid",
+    style: {
+      alignContent: "start"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("h2", null, "Lectura actual ", manual ? "(manual)" : `· t = ${fmt(s.t, 1)} h`), /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Eco (ancho del pulso)"), /*#__PURE__*/React.createElement("td", null, r.eco.toLocaleString("es-CO"), " \xB5s")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Temperatura del aire (DHT22)"), /*#__PURE__*/React.createElement("td", null, fmt(T_AIRE, 1), " \xB0C")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Velocidad del sonido"), /*#__PURE__*/React.createElement("td", null, fmt(C_SON, 1), " m/s")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Distancia al agua d"), /*#__PURE__*/React.createElement("td", null, fmt(r.d, 3), " m")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Nivel crudo h = ", fmt(H_MONT, 1), " \u2212 d"), /*#__PURE__*/React.createElement("td", null, fmt(r.hc, 3), " m")), !manual && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Validaci\xF3n P1"), /*#__PURE__*/React.createElement("td", {
+    className: s.valido ? "ok" : "no"
+  }, s.valido ? "válida" : "descartada: " + s.motivo)), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Nivel validado"), /*#__PURE__*/React.createElement("td", null, fmt(s.h, 3), " m")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "dh/dt (1 h)"), /*#__PURE__*/React.createElement("td", null, fmt(s.dhdt, 3), " m/h"))), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Sem\xE1foro del nodo"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
+    className: "badge b-" + lv
+  }, ICO[lv], " ", TXT[lv])))))), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("h2", null, "Monitor serial \xB7 115 200 baudios"), /*#__PURE__*/React.createElement("pre", {
+    className: "serial"
+  }, manual ? `{"eco_us":${r.eco},"T_C":${T_AIRE.toFixed(1)},"d_m":${r.d.toFixed(3)},"h_m":${r.hc.toFixed(3)}}` : lineas.join("\n")), /*#__PURE__*/React.createElement("p", {
+    className: "small"
+  }, "Cada trama JSON es la que el nodo env\xEDa a la API de ingesta (P1).")), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("h2", null, "Circuito en Wokwi"), /*#__PURE__*/React.createElement("p", {
+    className: "small"
+  }, "El mismo nodo est\xE1 montado en el simulador de Arduino Wokwi con HC-SR04, DHT22, 4 LEDs y zumbador. El c\xF3digo (sketch.ino) y el diagrama (diagram.json) est\xE1n en el repositorio."), /*#__PURE__*/React.createElement("div", {
+    className: "row"
+  }, /*#__PURE__*/React.createElement("a", {
+    className: "btn",
+    href: WOKWI_URL,
+    target: "_blank",
+    rel: "noopener"
+  }, "Abrir en Wokwi"), /*#__PURE__*/React.createElement("a", {
+    className: "btn sec",
+    href: SKETCH_URL,
+    target: "_blank",
+    rel: "noopener"
+  }, "Ver c\xF3digo")))));
+}
 function Ecosistema() {
-  const filas = [["E1", "Nivel del río h(t)", "Generador de series con ruido (σ = 1 cm) y fallas de sensor (2 %)", "IDEAM / UNGRD / sensor IoT futuro"], ["E2", "Perfil del usuario", "10 526 hogares con perfil smartphone, básico o sin celular", "Registro con consentimiento (Ley 1581)"], ["E3", "Reportes ciudadanos", "Formulario de reporte con validación cruzada", "Comunidad de Girardot, Nueva Venecia, Baracoa, Santa Coita"], ["E4", "Parámetros de control", "Pestaña Configuración (umbrales, tmin, tasas)", "Cotas oficiales del IDEAM"], ["P1", "Ingesta y validación", "Rango [0,15] m, salto ≤ 0,5 m / 10 min, última lectura válida", "API REST"], ["P2", "Motor de reglas y pronóstico", "dh/dt en 1 h, tiempo a umbral, histéresis y confirmación", "Reglas explicables (IEEE)"], ["P3", "Base de datos", "Estado en memoria + exportación CSV", "PostgreSQL/PostGIS en la versión final"], ["P4", "Gestor de notificaciones", "Colas a 50 msg/s, acuse en 5 min y 3 reintentos", "Pasarela SMS, servicio push, IVR"], ["P5", "Mapa de riesgo y rutas", "Mapa esquemático SVG con rutas a puntos de encuentro", "Servicio de mapas / PostGIS"], ["S1–S3", "Push, SMS y voz", "Maqueta de celular y síntesis de voz del navegador", "Operadores móviles, altavoces"], ["S5", "Panel institucional", "Pestaña Panel", "Alcaldía de Magangué, UNGRD, CMGRD"], ["R1–R3", "Acuse, validación ciudadana y KPIs", "Reintentos, regla R2 y banco de pruebas", "Recalibración de umbrales"]];
+  const filas = [["E1", "Nivel del río h(t)", "Nodo Arduino Uno + HC-SR04 (pestaña Sensor E1 y Wokwi); serie con ruido σ = 1 cm y fallas 2 %", "IDEAM / UNGRD / nodo IoT en el puente"], ["E2", "Perfil del usuario", "10 526 hogares con perfil smartphone, básico o sin celular", "Registro con consentimiento (Ley 1581)"], ["E3", "Reportes ciudadanos", "Formulario de reporte con validación cruzada", "Comunidad de Girardot, Nueva Venecia, Baracoa, Santa Coita"], ["E4", "Parámetros de control", "Pestaña Configuración (umbrales, tmin, tasas)", "Cotas oficiales del IDEAM"], ["P1", "Ingesta y validación", "Rango [0,15] m, salto ≤ 0,5 m / 10 min, última lectura válida", "API REST"], ["P2", "Motor de reglas y pronóstico", "dh/dt en 1 h, tiempo a umbral, histéresis y confirmación", "Reglas explicables (IEEE)"], ["P3", "Base de datos", "Estado en memoria + exportación CSV", "PostgreSQL/PostGIS en la versión final"], ["P4", "Gestor de notificaciones", "Colas a 50 msg/s, acuse en 5 min y 3 reintentos", "Pasarela SMS, servicio push, IVR"], ["P5", "Mapa de riesgo y rutas", "Mapa esquemático SVG con rutas a puntos de encuentro", "Servicio de mapas / PostGIS"], ["S1–S3", "Push, SMS y voz", "Maqueta de celular y síntesis de voz del navegador", "Operadores móviles, altavoces"], ["S5", "Panel institucional", "Pestaña Panel", "Alcaldía de Magangué, UNGRD, CMGRD"], ["R1–R3", "Acuse, validación ciudadana y KPIs", "Reintentos, regla R2 y banco de pruebas", "Recalibración de umbrales"]];
   return /*#__PURE__*/React.createElement("div", {
     className: "grid g2"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1568,7 +1868,7 @@ function App() {
       setUser(u);
     }
   });
-  const T = [["panel", "Panel institucional"], ["notif", "Notificaciones"], ["rep", "Reportes ciudadanos"], ["exp", "Experimentos y KPIs"], ["eco", "Ecosistema"], ["cfg", "Configuración"]];
+  const T = [["panel", "Panel institucional"], ["sensor", "Sensor E1 (Arduino)"], ["notif", "Notificaciones"], ["rep", "Reportes ciudadanos"], ["exp", "Experimentos y KPIs"], ["eco", "Ecosistema"], ["cfg", "Configuración"]];
   const lv = NIVELES[datos.serie[paso].nivel];
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "top"
@@ -1613,6 +1913,9 @@ function App() {
     reportes,
     logs,
     user
+  }), tab === "sensor" && /*#__PURE__*/React.createElement(Sensor, {
+    datos: datos,
+    paso: paso
   }), tab === "notif" && /*#__PURE__*/React.createElement(Notificaciones, {
     cfg: cfg,
     datos: datos,
