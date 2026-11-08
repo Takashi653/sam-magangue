@@ -375,7 +375,8 @@ function Grafico({
   real,
   cfg,
   hasta,
-  alto = 230
+  alto = 230,
+  total = N_STEPS
 }) {
   const W = 760,
     H = alto,
@@ -386,7 +387,7 @@ function Grafico({
   const ys = [...real, cfg.hRo + 0.3, 6.4];
   const ymin = Math.floor(Math.min(...ys.filter(v => v != null)) * 2) / 2,
     ymax = Math.ceil(Math.max(...ys.filter(v => v != null)) * 2) / 2;
-  const X = i => pl + (W - pl - pr) * i / (N_STEPS - 1),
+  const X = i => pl + (W - pl - pr) * i / (total - 1),
     Y = v => pt + (H - pt - pb) * (1 - (v - ymin) / (ymax - ymin));
   const path = arr => arr.slice(0, hasta + 1).map((v, i) => v == null ? "" : `${i && arr[i - 1] != null ? "L" : "M"}${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join("");
   const col = {
@@ -431,7 +432,13 @@ function Grafico({
     fontSize: "10",
     textAnchor: "end",
     fill: "var(--mute)"
-  }, fmt(v, 1)))), [0, 12, 24, 36, 48, 60, 72].map(h => /*#__PURE__*/React.createElement("text", {
+  }, fmt(v, 1)))), (() => {
+    const hh = (total - 1) / 6,
+      st = hh > 36 ? 12 : hh > 12 ? 3 : 1,
+      o = [];
+    for (let h = 0; h <= hh + 1e-9; h += st) o.push(h);
+    return o;
+  })().map(h => /*#__PURE__*/React.createElement("text", {
     key: h,
     x: X(h * 6),
     y: H - 6,
@@ -777,20 +784,12 @@ function MiAlerta({
 }
 function Panel({
   cfg,
-  esc,
-  setEsc,
-  seed,
-  setSeed,
   paso,
-  setPaso,
-  play,
-  setPlay,
-  vel,
-  setVel,
   datos,
   reportes,
   logs,
-  user
+  user,
+  ctl
 }) {
   const s = datos.serie[paso];
   const lv = NIVELES[s.nivel];
@@ -801,56 +800,7 @@ function Panel({
     style: {
       gap: 14
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "card row",
-    style: {
-      justifyContent: "space-between"
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "row"
-  }, /*#__PURE__*/React.createElement("label", null, "Escenario ", /*#__PURE__*/React.createElement("select", {
-    value: esc,
-    onChange: e => {
-      setEsc(e.target.value);
-      setPaso(0);
-    }
-  }, Object.entries(ESCENARIOS).map(([k, v]) => /*#__PURE__*/React.createElement("option", {
-    key: k,
-    value: k
-  }, v.nombre)))), /*#__PURE__*/React.createElement("label", null, "Semilla ", /*#__PURE__*/React.createElement("input", {
-    type: "number",
-    value: seed,
-    onChange: e => {
-      setSeed(+e.target.value || 1);
-      setPaso(0);
-    },
-    style: {
-      width: 80
-    }
-  })), /*#__PURE__*/React.createElement("button", {
-    className: "btn",
-    onClick: () => setPlay(!play)
-  }, play ? "⏸ Pausar" : "▶ Simular"), /*#__PURE__*/React.createElement("button", {
-    className: "btn sec",
-    onClick: () => {
-      setPaso(0);
-      setPlay(false);
-    }
-  }, "\u27F2 Reiniciar"), /*#__PURE__*/React.createElement("button", {
-    className: "btn sec",
-    onClick: () => setPaso(Math.min(N_STEPS - 1, paso + 1))
-  }, "+10 min"), /*#__PURE__*/React.createElement("label", null, "Velocidad ", /*#__PURE__*/React.createElement("select", {
-    value: vel,
-    onChange: e => setVel(+e.target.value)
-  }, /*#__PURE__*/React.createElement("option", {
-    value: 400
-  }, "1\xD7"), /*#__PURE__*/React.createElement("option", {
-    value: 120
-  }, "4\xD7"), /*#__PURE__*/React.createElement("option", {
-    value: 30
-  }, "16\xD7")))), /*#__PURE__*/React.createElement("div", {
-    className: "small"
-  }, "t = ", fmt(s.t, 1), " h \xB7 lectura ", paso + 1, "/", N_STEPS)), /*#__PURE__*/React.createElement(MiAlerta, {
+  }, /*#__PURE__*/React.createElement(Controles, ctl), /*#__PURE__*/React.createElement(MiAlerta, {
     user: user,
     s: s
   }), /*#__PURE__*/React.createElement("div", {
@@ -898,10 +848,11 @@ function Panel({
     serie: datos.serie,
     real: datos.real,
     cfg: cfg,
-    hasta: paso
+    hasta: paso,
+    total: datos.raw ? Math.max(37, datos.serie.length) : N_STEPS
   }), /*#__PURE__*/React.createElement("div", {
     className: "small"
-  }, "Azul: nivel validado \xB7 gris punteado: nivel real simulado \xB7 puntos rojos: lecturas descartadas por la validaci\xF3n (P1) \xB7 bandas: nivel de alerta emitido.")), /*#__PURE__*/React.createElement("div", {
+  }, datos.raw ? "Datos en vivo del sensor ESP32 (Wokwi) · gris: lectura cruda del HC-SR04 · " : "", "Azul: nivel validado \xB7 gris punteado: nivel real simulado \xB7 puntos rojos: lecturas descartadas por la validaci\xF3n (P1) \xB7 bandas: nivel de alerta emitido.")), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("h2", null, "P5 / S4 \xB7 Mapa de riesgo y rutas"), /*#__PURE__*/React.createElement(Mapa, {
     nivel: s.nivel,
@@ -1278,8 +1229,21 @@ function Experimentos({
 const H_MONT = 11.0,
   T_AIRE = 30.0,
   C_SON = 331.3 + 0.606 * T_AIRE; // velocidad del sonido a 30 °C
-const WOKWI_URL = "https://wokwi.com/projects/479990588756527105";
-const SKETCH_URL = "https://github.com/Takashi653/sam-magangue/tree/main/wokwi";
+const WOKWI_URL = "https://wokwi.com/projects/480157042800788481"; // ESP32 + HC-SR04 conectado por MQTT
+const WOKWI_UNO_URL = "https://wokwi.com/projects/479990588756527105"; // versión Arduino Uno (solo monitor serial)
+const MQTT_URL = "wss://broker.hivemq.com:8884/mqtt",
+  MQTT_TEMA = "unad-g62/sam-magangue/e1";
+const MQTT_LIB = "https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js";
+function cargarMqtt() {
+  return window.mqtt ? Promise.resolve(window.mqtt) : new Promise((ok, err) => {
+    const sc = document.createElement("script");
+    sc.src = MQTT_LIB;
+    sc.onload = () => ok(window.mqtt);
+    sc.onerror = err;
+    document.head.appendChild(sc);
+  });
+}
+const SKETCH_URL = "https://github.com/Takashi653/sam-magangue/tree/main/wokwi-esp32";
 function lecturaSensor(o) {
   if (o == null) return {
     eco: 0,
@@ -1311,9 +1275,55 @@ function Controles({
   setPlay,
   vel,
   setVel,
-  datos
+  datos,
+  fuente,
+  setFuente,
+  mqttEstado,
+  limpiar
 }) {
   const s = datos.serie[paso];
+  const selFuente = /*#__PURE__*/React.createElement("label", null, "Fuente de datos E1 ", /*#__PURE__*/React.createElement("select", {
+    value: fuente,
+    onChange: e => {
+      setPlay(false);
+      setPaso(0);
+      setFuente(e.target.value);
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "sim"
+  }, "Serie simulada (escenarios)"), /*#__PURE__*/React.createElement("option", {
+    value: "wokwi"
+  }, "Sensor ESP32 en Wokwi (en vivo, MQTT)")));
+  if (fuente === "wokwi") {
+    const n = datos.raw.length,
+      col = mqttEstado === "conectado" ? "var(--verde)" : mqttEstado === "error" ? "var(--roja)" : "var(--naranja)";
+    return /*#__PURE__*/React.createElement("div", {
+      className: "card",
+      style: {
+        display: "grid",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "row",
+      style: {
+        justifyContent: "space-between"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "row"
+    }, selFuente, /*#__PURE__*/React.createElement("span", {
+      className: "badge",
+      style: {
+        background: col
+      }
+    }, "\u25CF MQTT ", mqttEstado), /*#__PURE__*/React.createElement("button", {
+      className: "btn sec",
+      onClick: limpiar
+    }, "\u27F2 Borrar lecturas")), /*#__PURE__*/React.createElement("div", {
+      className: "small"
+    }, n ? `${n} lecturas recibidas del ESP32 · t = ${fmt(s.t, 1)} h` : "Esperando lecturas del ESP32…")), /*#__PURE__*/React.createElement("div", {
+      className: "hint"
+    }, "Modo conectado: la p\xE1gina se suscribe al tema ", /*#__PURE__*/React.createElement("b", null, MQTT_TEMA), ". Abra la pesta\xF1a ", /*#__PURE__*/React.createElement("b", null, "Sensor E1"), ", pulse \u25B6 en el circuito de Wokwi, haga clic en el HC-SR04 y mueva ", /*#__PURE__*/React.createElement("b", null, "distance"), ": cada lectura del sensor entra aqu\xED como E1 y pasa por la validaci\xF3n (P1), el motor de reglas (P2) y la difusi\xF3n (P4). Cada lectura equivale a 10 min del r\xEDo."));
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "card",
     style: {
@@ -1327,7 +1337,7 @@ function Controles({
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "row"
-  }, /*#__PURE__*/React.createElement("label", null, "Escenario ", /*#__PURE__*/React.createElement("select", {
+  }, selFuente, /*#__PURE__*/React.createElement("label", null, "Escenario ", /*#__PURE__*/React.createElement("select", {
     value: esc,
     onChange: e => {
       setEsc(e.target.value);
@@ -1395,6 +1405,8 @@ function Sensor({
   const [manual, setManual] = useState(false),
     [cm, setCm] = useState(250);
   const s = datos.serie[paso];
+  const vivo = !!datos.raw,
+    m = vivo ? datos.raw[paso] : null;
   const r = manual ? (() => {
     const d = cm / 100,
       eco = Math.round(2 * d / C_SON * 1e6);
@@ -1403,24 +1415,74 @@ function Sensor({
       d,
       hc: H_MONT - d
     };
-  })() : lecturaSensor(s.obs);
+  })() : vivo ? m ? {
+    eco: m.eco_us,
+    d: m.d_m,
+    hc: m.h_crudo,
+    T: m.T_C,
+    c: m.c_ms
+  } : {
+    eco: 0,
+    d: null,
+    hc: null
+  } : lecturaSensor(s.obs);
   const hVis = manual ? r.hc : s.obs != null && s.obs >= 0 && s.obs <= 15 ? s.obs : s.h;
   const lv = manual ? r.hc >= 10 ? "roja" : r.hc >= 9 ? "naranja" : r.hc >= 8 ? "amarilla" : "verde" : NIVELES[s.nivel];
   // escena: y de una cota en metros (izquierda) y placa Arduino detallada (derecha)
   const Y = m => 80 + (H_MONT + 0.4 - m) * 40,
     yAgua = Y(Math.max(5.6, Math.min(hVis ?? 6, 11)));
-  const lineas = datos.serie.slice(Math.max(0, paso - 11), paso + 1).map(trama);
+  const lineas = vivo ? datos.raw.slice(Math.max(0, paso - 11), paso + 1).map(o => JSON.stringify(o)) : datos.serie.slice(Math.max(0, paso - 11), paso + 1).map(trama);
   const LED = [["verde", "#2e7d32", "D2"], ["amarilla", "#f2b705", "D3"], ["naranja", "#e8710a", "D4"], ["roja", "#c62828", "D5"]];
   const PINES = ["AREF", "GND", "13", "12", "~11", "~10", "~9", "8", "7", "~6", "~5", "~4", "~3", "2", "TX", "RX"];
   const px = k => 512 + k * 14.5;
-  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Controles, ctl), /*#__PURE__*/React.createElement("div", {
+  const wokwiCard = /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      justifyContent: "space-between"
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    style: {
+      margin: 0
+    }
+  }, "Circuito en vivo \xB7 ESP32 + HC-SR04 en Wokwi ", vivo && /*#__PURE__*/React.createElement("span", {
+    className: "badge b-verde",
+    style: {
+      fontSize: 12
+    }
+  }, "conectado a la p\xE1gina")), /*#__PURE__*/React.createElement("div", {
+    className: "row"
+  }, /*#__PURE__*/React.createElement("a", {
+    className: "btn sec",
+    href: WOKWI_URL,
+    target: "_blank",
+    rel: "noopener"
+  }, "Abrir en pesta\xF1a nueva"), /*#__PURE__*/React.createElement("a", {
+    className: "btn sec",
+    href: SKETCH_URL,
+    target: "_blank",
+    rel: "noopener"
+  }, "Ver c\xF3digo"))), /*#__PURE__*/React.createElement("p", {
+    className: "small"
+  }, vivo ? "Pulse ▶ en el circuito. El ESP32 se conecta al WiFi, publica cada lectura por MQTT y la página la recibe como entrada E1. Haga clic en el HC-SR04 y mueva distance: al acercar el agua, el nivel sube en el Panel, la bitácora registra los cambios y se difunden las alertas." : "Para usar estas lecturas como entrada de la página, elija arriba «Sensor ESP32 en Wokwi (en vivo, MQTT)» y pulse ▶ en el circuito."), /*#__PURE__*/React.createElement("iframe", {
+    className: "wokwi",
+    src: WOKWI_URL + "?embed=1",
+    title: "Nodo E1 en Wokwi: ESP32 con HC-SR04",
+    loading: "lazy",
+    allow: "fullscreen"
+  }));
+  return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement(Controles, ctl), vivo && wokwiCard, /*#__PURE__*/React.createElement("div", {
     className: "grid g2",
     style: {
       marginTop: 14
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
-  }, /*#__PURE__*/React.createElement("h2", null, "Nodo de medici\xF3n E1 \xB7 Arduino Uno + sensor ultras\xF3nico HC-SR04"), /*#__PURE__*/React.createElement("svg", {
+  }, /*#__PURE__*/React.createElement("h2", null, "Nodo de medici\xF3n E1 \xB7 ", vivo ? "ESP32 (WiFi/MQTT)" : "Arduino Uno", " + sensor ultras\xF3nico HC-SR04"), /*#__PURE__*/React.createElement("svg", {
     viewBox: "0 0 760 340",
     style: {
       width: "100%",
@@ -1644,7 +1706,7 @@ function Sensor({
     fill: "#fff",
     fontWeight: "700",
     textAnchor: "middle"
-  }, "UNO"), /*#__PURE__*/React.createElement("text", {
+  }, vivo ? "ESP32" : "UNO"), /*#__PURE__*/React.createElement("text", {
     x: "680",
     y: "98",
     fontSize: "10",
@@ -1781,58 +1843,24 @@ function Sensor({
     "aria-label": "Distancia al agua en cm"
   }), /*#__PURE__*/React.createElement("span", null, cm, " cm"))), /*#__PURE__*/React.createElement("p", {
     className: "small"
-  }, manual ? "Modo manual: mueva la distancia como en el control del HC-SR04 de Wokwi." : "Pulse ▶ Simular para ver cómo el sensor sigue la creciente lectura por lectura (cada lectura son 10 min del río); también puede arrastrar la barra de tiempo.", " Distancia d = c \xB7 t_eco / 2 con c = 331,3 + 0,606\xB7T = ", fmt(C_SON, 1), " m/s; nivel h = ", fmt(H_MONT, 1), " \u2212 d.")), /*#__PURE__*/React.createElement("div", {
+  }, manual ? "Modo manual: mueva la distancia como en el control del HC-SR04 de Wokwi." : vivo ? "Datos reales del circuito: eco, temperatura y distancia los envía el ESP32 desde Wokwi; la validación y la alerta las calcula la página." : "Pulse ▶ Simular para ver cómo el sensor sigue la creciente lectura por lectura (cada lectura son 10 min del río); también puede arrastrar la barra de tiempo.", " Distancia d = c \xB7 t_eco / 2 con c = 331,3 + 0,606\xB7T = ", fmt(C_SON, 1), " m/s; nivel h = ", fmt(H_MONT, 1), " \u2212 d.")), /*#__PURE__*/React.createElement("div", {
     className: "grid",
     style: {
       alignContent: "start"
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
-  }, /*#__PURE__*/React.createElement("h2", null, "Lectura actual ", manual ? "(manual)" : `· t = ${fmt(s.t, 1)} h`), /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Eco (ancho del pulso)"), /*#__PURE__*/React.createElement("td", null, r.eco.toLocaleString("es-CO"), " \xB5s")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Temperatura del aire (DHT22)"), /*#__PURE__*/React.createElement("td", null, fmt(T_AIRE, 1), " \xB0C")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Velocidad del sonido"), /*#__PURE__*/React.createElement("td", null, fmt(C_SON, 1), " m/s")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Distancia al agua d"), /*#__PURE__*/React.createElement("td", null, fmt(r.d, 3), " m")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Nivel crudo h = ", fmt(H_MONT, 1), " \u2212 d"), /*#__PURE__*/React.createElement("td", null, fmt(r.hc, 3), " m")), !manual && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Validaci\xF3n P1"), /*#__PURE__*/React.createElement("td", {
+  }, /*#__PURE__*/React.createElement("h2", null, "Lectura actual ", manual ? "(manual)" : `· t = ${fmt(s.t, 1)} h`), /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Eco (ancho del pulso)"), /*#__PURE__*/React.createElement("td", null, r.eco.toLocaleString("es-CO"), " \xB5s")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Temperatura del aire (DHT22)"), /*#__PURE__*/React.createElement("td", null, fmt(r.T ?? T_AIRE, 1), " \xB0C")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Velocidad del sonido"), /*#__PURE__*/React.createElement("td", null, fmt(r.c ?? C_SON, 1), " m/s")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Distancia al agua d"), /*#__PURE__*/React.createElement("td", null, fmt(r.d, 3), " m")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Nivel crudo h = ", fmt(H_MONT, 1), " \u2212 d"), /*#__PURE__*/React.createElement("td", null, fmt(r.hc, 3), " m")), !manual && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Validaci\xF3n P1"), /*#__PURE__*/React.createElement("td", {
     className: s.valido ? "ok" : "no"
   }, s.valido ? "válida" : "descartada: " + s.motivo)), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Nivel validado"), /*#__PURE__*/React.createElement("td", null, fmt(s.h, 3), " m")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "dh/dt (1 h)"), /*#__PURE__*/React.createElement("td", null, fmt(s.dhdt, 3), " m/h"))), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Sem\xE1foro del nodo"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
     className: "badge b-" + lv
   }, ICO[lv], " ", TXT[lv])))))), /*#__PURE__*/React.createElement("div", {
     className: "card"
-  }, /*#__PURE__*/React.createElement("h2", null, "Monitor serial \xB7 115 200 baudios"), /*#__PURE__*/React.createElement("pre", {
+  }, /*#__PURE__*/React.createElement("h2", null, vivo ? "Mensajes MQTT recibidos del ESP32" : "Monitor serial · 115 200 baudios"), /*#__PURE__*/React.createElement("pre", {
     className: "serial"
   }, manual ? `{"eco_us":${r.eco},"T_C":${T_AIRE.toFixed(1)},"d_m":${r.d.toFixed(3)},"h_m":${r.hc.toFixed(3)}}` : lineas.join("\n")), /*#__PURE__*/React.createElement("p", {
     className: "small"
-  }, "Cada trama JSON es la que el nodo env\xEDa a la API de ingesta (P1).")))), /*#__PURE__*/React.createElement("div", {
-    className: "card",
-    style: {
-      marginTop: 14
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "row",
-    style: {
-      justifyContent: "space-between"
-    }
-  }, /*#__PURE__*/React.createElement("h2", {
-    style: {
-      margin: 0
-    }
-  }, "Circuito en vivo \xB7 simulador Arduino Wokwi"), /*#__PURE__*/React.createElement("div", {
-    className: "row"
-  }, /*#__PURE__*/React.createElement("a", {
-    className: "btn sec",
-    href: WOKWI_URL,
-    target: "_blank",
-    rel: "noopener"
-  }, "Abrir en pesta\xF1a nueva"), /*#__PURE__*/React.createElement("a", {
-    className: "btn sec",
-    href: SKETCH_URL,
-    target: "_blank",
-    rel: "noopener"
-  }, "Ver c\xF3digo"))), /*#__PURE__*/React.createElement("p", {
-    className: "small"
-  }, "Pulse \u25B6 para compilar y ejecutar el sketch. Luego haga clic en el HC-SR04 y mueva el control ", /*#__PURE__*/React.createElement("b", null, "distance"), ": al acercar el agua al sensor el nivel sube y se encienden los LEDs amarillo, naranja y rojo; el monitor serial muestra cada trama JSON."), /*#__PURE__*/React.createElement("iframe", {
-    className: "wokwi",
-    src: WOKWI_URL + "?embed=1",
-    title: "Nodo E1 en Wokwi: Arduino Uno con HC-SR04",
-    loading: "lazy",
-    allow: "fullscreen"
-  })));
+  }, vivo ? `Tema ${MQTT_TEMA} · broker.hivemq.com. Estas tramas llegan en vivo desde el circuito.` : "Cada trama JSON es la que el nodo envía a la API de ingesta (P1).")))), !vivo && wokwiCard);
 }
 function Ecosistema() {
   const filas = [["E1", "Nivel del río h(t)", "Nodo Arduino Uno + HC-SR04 (pestaña Sensor E1 y Wokwi); serie con ruido σ = 1 cm y fallas 2 %", "IDEAM / UNGRD / nodo IoT en el puente"], ["E2", "Perfil del usuario", "10 526 hogares con perfil smartphone, básico o sin celular", "Registro con consentimiento (Ley 1581)"], ["E3", "Reportes ciudadanos", "Formulario de reporte con validación cruzada", "Comunidad de Girardot, Nueva Venecia, Baracoa, Santa Coita"], ["E4", "Parámetros de control", "Pestaña Configuración (umbrales, tmin, tasas)", "Cotas oficiales del IDEAM"], ["P1", "Ingesta y validación", "Rango [0,15] m, salto ≤ 0,5 m / 10 min, última lectura válida", "API REST"], ["P2", "Motor de reglas y pronóstico", "dh/dt en 1 h, tiempo a umbral, histéresis y confirmación", "Reglas explicables (IEEE)"], ["P3", "Base de datos", "Estado en memoria + exportación CSV", "PostgreSQL/PostGIS en la versión final"], ["P4", "Gestor de notificaciones", "Colas a 50 msg/s, acuse en 5 min y 3 reintentos", "Pasarela SMS, servicio push, IVR"], ["P5", "Mapa de riesgo y rutas", "Mapa esquemático SVG con rutas a puntos de encuentro", "Servicio de mapas / PostGIS"], ["S1–S3", "Push, SMS y voz", "Maqueta de celular y síntesis de voz del navegador", "Operadores móviles, altavoces"], ["S5", "Panel institucional", "Pestaña Panel", "Alcaldía de Magangué, UNGRD, CMGRD"], ["R1–R3", "Acuse, validación ciudadana y KPIs", "Reintentos, regla R2 y banco de pruebas", "Recalibración de umbrales"]];
@@ -2052,13 +2080,68 @@ function App() {
     [play, setPlay] = useState(false),
     [vel, setVel] = useState(120),
     [reportes, setReportes] = useState([]);
+  const [fuente, setFuente] = useState(Q.get("fuente") === "wokwi" ? "wokwi" : "sim"),
+    [live, setLive] = useState([]),
+    [mqttEstado, setMqttEstado] = useState("desconectado");
+  // Conexión con el nodo ESP32 de Wokwi: MQTT sobre WebSocket (entrada E1 en vivo)
+  useEffect(() => {
+    if (fuente !== "wokwi") return;
+    let cli = null,
+      vivo = true;
+    setMqttEstado("conectando");
+    cargarMqtt().then(mq => {
+      if (!vivo) return;
+      cli = mq.connect(MQTT_URL, {
+        clientId: "sam-web-" + Math.random().toString(16).slice(2, 8),
+        reconnectPeriod: 3000,
+        connectTimeout: 8000
+      });
+      cli.on("connect", () => {
+        setMqttEstado("conectado");
+        cli.subscribe(MQTT_TEMA);
+      });
+      cli.on("reconnect", () => setMqttEstado("reconectando"));
+      cli.on("error", () => setMqttEstado("error"));
+      cli.on("offline", () => setMqttEstado("sin conexión"));
+      cli.on("message", (t, msg) => {
+        let o;
+        try {
+          o = JSON.parse(msg.toString());
+        } catch (e) {
+          return;
+        }
+        if (typeof o !== "object" || o == null || typeof o.eco_us !== "number") return;
+        if (!("h_crudo" in o)) o.h_crudo = o.d_m == null ? null : H_MONT - o.d_m;
+        setLive(l => {
+          const u = l[l.length - 1];
+          if (u && o.n != null && u.n != null && o.n < u.n) return [o];
+          return [...l.slice(-(N_STEPS - 1)), o];
+        });
+      });
+    }).catch(() => setMqttEstado("error"));
+    return () => {
+      vivo = false;
+      if (cli) cli.end(true);
+    };
+  }, [fuente]);
   const datos = useMemo(() => {
+    if (fuente === "wokwi") {
+      const obs = live.length ? live.map(o => o.h_crudo == null ? null : Math.round(o.h_crudo * 1000) / 1000) : [null];
+      return {
+        real: obs,
+        serie: procesar(obs, cfg),
+        raw: live
+      };
+    }
     const g = generarSerie(esc, cfg, seed, 0);
     return {
       real: g.real,
       serie: procesar(g.obs, cfg)
     };
-  }, [esc, cfg, seed]);
+  }, [esc, cfg, seed, fuente, live]);
+  useEffect(() => {
+    if (fuente === "wokwi") setPaso(Math.max(0, live.length - 1));
+  }, [live, fuente]);
   useEffect(() => {
     if (!play) return;
     const id = setInterval(() => setPaso(p => {
@@ -2072,12 +2155,13 @@ function App() {
   }, [play, vel]);
   // Bitácora en vivo: P1 (lecturas descartadas), P2 (cambio de alerta) y P4 (difusión automática)
   useEffect(() => {
+    if (paso >= datos.serie.length) return;
     if (paso === 0) {
       setLogs([{
         t: 0,
         tipo: "info",
         bloque: "E1",
-        txt: `Estación conectada. Escenario: ${ESCENARIOS[esc].nombre}.`
+        txt: fuente === "wokwi" ? live.length ? `Nodo ESP32 (Wokwi) conectado por MQTT. Primera lectura: h = ${fmt(datos.serie[0].h)} m.` : "Esperando lecturas del nodo ESP32 en Wokwi (MQTT)." : `Estación conectada. Escenario: ${ESCENARIOS[esc].nombre}.`
       }]);
       prevNivel.current = datos.serie[0].nivel;
       return;
@@ -2130,16 +2214,40 @@ function App() {
       setUser(u);
     }
   });
-  const T = [["panel", "Panel institucional"], ["sensor", "Sensor E1 (Arduino)"], ["notif", "Notificaciones"], ["rep", "Reportes ciudadanos"], ["exp", "Experimentos y KPIs"], ["eco", "Ecosistema"], ["cfg", "Configuración"]];
-  const lv = NIVELES[datos.serie[paso].nivel];
+  const T = [["panel", "Panel institucional"], ["sensor", "Sensor E1 (Arduino/ESP32)"], ["notif", "Notificaciones"], ["rep", "Reportes ciudadanos"], ["exp", "Experimentos y KPIs"], ["eco", "Ecosistema"], ["cfg", "Configuración"]];
+  const p = Math.min(paso, datos.serie.length - 1);
+  const lv = NIVELES[datos.serie[p].nivel];
+  const ctl = {
+    esc,
+    setEsc,
+    seed,
+    setSeed,
+    paso: p,
+    setPaso,
+    play,
+    setPlay,
+    vel,
+    setVel,
+    datos,
+    fuente,
+    setFuente,
+    mqttEstado,
+    limpiar: () => setLive([])
+  };
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "top"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", null, "SAM-Magangu\xE9"), /*#__PURE__*/React.createElement("div", {
     className: "sub"
-  }, "Sistema de Alerta Multicanal \xB7 r\xEDo Magdalena \xB7 prototipo de baja fidelidad")), /*#__PURE__*/React.createElement("span", {
+  }, "Sistema de Alerta Multicanal \xB7 r\xEDo Magdalena \xB7 prototipo de baja fidelidad")), fuente === "wokwi" && /*#__PURE__*/React.createElement("span", {
+    className: "badge",
+    style: {
+      marginLeft: "auto",
+      background: mqttEstado === "conectado" ? "var(--verde)" : "var(--naranja)"
+    }
+  }, "\uD83D\uDCE1 Sensor Wokwi en vivo"), /*#__PURE__*/React.createElement("span", {
     className: "badge b-" + lv,
     style: {
-      marginLeft: "auto"
+      marginLeft: fuente === "wokwi" ? 0 : "auto"
     }
   }, ICO[lv], " ", TXT[lv]), /*#__PURE__*/React.createElement("span", {
     className: "sub"
@@ -2161,46 +2269,26 @@ function App() {
     onClick: () => setTab(k)
   }, t))), /*#__PURE__*/React.createElement("main", null, tab === "panel" && /*#__PURE__*/React.createElement(Panel, {
     cfg,
-    esc,
-    setEsc,
-    seed,
-    setSeed,
-    paso,
-    setPaso,
-    play,
-    setPlay,
-    vel,
-    setVel,
+    paso: p,
     datos,
     reportes,
     logs,
-    user
+    user,
+    ctl
   }), tab === "sensor" && /*#__PURE__*/React.createElement(Sensor, {
     datos: datos,
-    paso: paso,
-    ctl: {
-      esc,
-      setEsc,
-      seed,
-      setSeed,
-      paso,
-      setPaso,
-      play,
-      setPlay,
-      vel,
-      setVel,
-      datos
-    }
+    paso: p,
+    ctl: ctl
   }), tab === "notif" && /*#__PURE__*/React.createElement(Notificaciones, {
     cfg: cfg,
     datos: datos,
-    paso: paso,
+    paso: p,
     user: user.usuario
   }), tab === "rep" && /*#__PURE__*/React.createElement(Reportes, {
     reportes,
     setReportes,
     datos,
-    paso
+    paso: p
   }), tab === "exp" && /*#__PURE__*/React.createElement(Experimentos, {
     cfg: cfg
   }), tab === "eco" && /*#__PURE__*/React.createElement(Ecosistema, null), tab === "cfg" && /*#__PURE__*/React.createElement(Config, {
