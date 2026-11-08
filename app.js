@@ -1322,7 +1322,18 @@ function Controles({
       className: "small"
     }, n ? `${n} lecturas recibidas del ESP32 · t = ${fmt(s.t, 1)} h` : "Esperando lecturas del ESP32…")), /*#__PURE__*/React.createElement("div", {
       className: "hint"
-    }, "Modo conectado: la p\xE1gina se suscribe al tema ", /*#__PURE__*/React.createElement("b", null, MQTT_TEMA), ". Abra la pesta\xF1a ", /*#__PURE__*/React.createElement("b", null, "Sensor E1"), ", pulse \u25B6 en el circuito de Wokwi, haga clic en el HC-SR04 y mueva ", /*#__PURE__*/React.createElement("b", null, "distance"), ": cada lectura del sensor entra aqu\xED como E1 y pasa por la validaci\xF3n (P1), el motor de reglas (P2) y la difusi\xF3n (P4). Cada lectura equivale a 10 min del r\xEDo."));
+    }, /*#__PURE__*/React.createElement("b", null, "C\xF3mo probar la conexi\xF3n con Wokwi"), " (la p\xE1gina se suscribe al tema ", /*#__PURE__*/React.createElement("b", null, MQTT_TEMA), "):", /*#__PURE__*/React.createElement("ol", {
+      style: {
+        margin: "6px 0 0 18px",
+        padding: 0
+      }
+    }, /*#__PURE__*/React.createElement("li", null, "En la pesta\xF1a ", /*#__PURE__*/React.createElement("b", null, "Sensor E1"), ", pulse ", /*#__PURE__*/React.createElement("b", null, "\u25B6"), " en el circuito ESP32 de Wokwi y espere a que se conecte al WiFi (10\u201320 s). Arriba empezar\xE1 a subir el contador de lecturas."), /*#__PURE__*/React.createElement("li", null, "Mientras no se mueva el sensor, la lectura ser\xE1 siempre la misma (r\xEDo en calma: distancia 300 cm, nivel \u2248 7,9 m). Es lo esperado."), /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("b", null, "Para simular la creciente:"), " haga clic sobre el ", /*#__PURE__*/React.createElement("b", null, "HC-SR04"), " en Wokwi y ", /*#__PURE__*/React.createElement("b", null, "baje \xABdistance\xBB poco a poco"), " (de 10 en 10 cm cada pocos segundos). \u2248 200 cm \u2192 naranja \xB7 \u2248 100 cm \u2192 roja. Para que baje el r\xEDo, s\xFAbala."), /*#__PURE__*/React.createElement("li", null, "No la mueva de golpe: un salto de m\xE1s de 50 cm entre lecturas se descarta como lectura falsa (validaci\xF3n P1)."), /*#__PURE__*/React.createElement("li", null, "Vea el resultado en esta pesta\xF1a y en el ", /*#__PURE__*/React.createElement("b", null, "Panel institucional"), ": nivel, gr\xE1fica, sem\xE1foro, bit\xE1cora y difusi\xF3n de la alerta. Cada lectura equivale a 10 min del r\xEDo.")), n >= 8 && datos.serie.slice(-6).every(x => x.dhdt === 0 || x.dhdt == null) && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 6,
+        fontWeight: 600,
+        color: "var(--naranja)"
+      }
+    }, "\u26A0 El nivel no ha cambiado en las \xFAltimas lecturas: mueva \xABdistance\xBB del HC-SR04 en Wokwi para simular la creciente.")));
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "card",
