@@ -1454,8 +1454,8 @@ function Sensor({
   const Y = m => 80 + (H_MONT + 0.4 - m) * 40,
     yAgua = Y(Math.max(5.6, Math.min(hVis ?? 6, 11)));
   const lineas = vivo ? datos.raw.slice(Math.max(0, paso - 11), paso + 1).map(o => JSON.stringify(o)) : datos.serie.slice(Math.max(0, paso - 11), paso + 1).map(trama);
-  const LED = [["verde", "#2e7d32", "D2"], ["amarilla", "#f2b705", "D3"], ["naranja", "#e8710a", "D4"], ["roja", "#c62828", "D5"]];
-  const PINES = ["AREF", "GND", "13", "12", "~11", "~10", "~9", "8", "7", "~6", "~5", "~4", "~3", "2", "TX", "RX"];
+  const LED = vivo ? [["verde", "#2e7d32", "GPIO25"], ["amarilla", "#f2b705", "GPIO26"], ["naranja", "#e8710a", "GPIO27"], ["roja", "#c62828", "GPIO14"]] : [["verde", "#2e7d32", "D2"], ["amarilla", "#f2b705", "D3"], ["naranja", "#e8710a", "D4"], ["roja", "#c62828", "D5"]];
+  const PINES = vivo ? ["3V3", "GND", "15", "2", "4", "18", "5", "19", "21", "22", "23", "25", "26", "27", "14", "13"] : ["AREF", "GND", "13", "12", "~11", "~10", "~9", "8", "7", "~6", "~5", "~4", "~3", "2", "TX", "RX"];
   const px = k => 512 + k * 14.5;
   const wokwiCard = /*#__PURE__*/React.createElement("div", {
     className: "card",
@@ -1651,8 +1651,8 @@ function Sensor({
     width: "260",
     height: "170",
     rx: "8",
-    fill: "#00878f",
-    stroke: "#005f66",
+    fill: vivo ? "#1f2a36" : "#00878f",
+    stroke: vivo ? "#0d141c" : "#005f66",
     strokeWidth: "2"
   }), /*#__PURE__*/React.createElement("rect", {
     x: "505",
@@ -1701,7 +1701,7 @@ function Sensor({
     fontSize: "7",
     fill: "#fff",
     textAnchor: "middle"
-  }, "USB"), /*#__PURE__*/React.createElement("rect", {
+  }, vivo ? "micro-USB" : "USB"), /*#__PURE__*/React.createElement("rect", {
     x: "480",
     y: "140",
     width: "26",
@@ -1721,7 +1721,7 @@ function Sensor({
     fontSize: "9",
     fill: "#ccc",
     textAnchor: "middle"
-  }, "ATmega328P"), /*#__PURE__*/React.createElement("text", {
+  }, vivo ? "ESP32-WROOM-32" : "ATmega328P"), /*#__PURE__*/React.createElement("text", {
     x: "600",
     y: "98",
     fontSize: "22",
@@ -1735,7 +1735,7 @@ function Sensor({
     fill: "#fff",
     textAnchor: "middle",
     letterSpacing: "1"
-  }, "ARDUINO"), /*#__PURE__*/React.createElement("rect", {
+  }, vivo ? "DevKitC" : "ARDUINO"), /*#__PURE__*/React.createElement("rect", {
     x: "560",
     y: "168",
     width: "150",
@@ -1748,7 +1748,7 @@ function Sensor({
     fontSize: "7",
     fill: "#aaa",
     textAnchor: "middle"
-  }, "POWER \xB7 ANALOG IN"), /*#__PURE__*/React.createElement("circle", {
+  }, vivo ? "WiFi 2,4 GHz · MQTT" : "POWER · ANALOG IN"), /*#__PURE__*/React.createElement("circle", {
     cx: "735",
     cy: "60",
     r: "3",
@@ -1815,7 +1815,7 @@ function Sensor({
     fontSize: "9",
     fill: "var(--ink)",
     textAnchor: "middle"
-  }, "zumbador D6"), /*#__PURE__*/React.createElement("rect", {
+  }, vivo ? "zumbador GPIO13" : "zumbador D6"), /*#__PURE__*/React.createElement("rect", {
     x: "490",
     y: "290",
     width: "38",
@@ -1834,7 +1834,7 @@ function Sensor({
     y: "309",
     fontSize: "10",
     fill: "var(--ink)"
-  }, "D7 \xB7 ", fmt(T_AIRE, 1), " \xB0C \u2192 c = ", fmt(C_SON, 1), " m/s"), /*#__PURE__*/React.createElement("text", {
+  }, vivo ? "GPIO15" : "D7", " \xB7 ", fmt(r.T ?? T_AIRE, 1), " \xB0C \u2192 c = ", fmt(r.c ?? C_SON, 1), " m/s"), /*#__PURE__*/React.createElement("text", {
     x: "536",
     y: "325",
     fontSize: "10",
