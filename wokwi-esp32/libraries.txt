@@ -1,0 +1,4 @@
+# Bibliotecas de Wokwi
+PubSubClient
+DHT sensor library
+Adafruit Unified Sensor
