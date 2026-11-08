@@ -126,10 +126,21 @@ function procesar(obs, cfg) {
       valido = false;
       motivo = "fuera de rango [0,15] m";
     } else if (ultimo != null && Math.abs(o - ultimo) > 0.5) {
-      valido = false;
-      motivo = "salto > 0,5 m en 10 min";
+      // resincronización: 3 lecturas seguidas coherentes entre sí se aceptan (igual que el nodo)
+      if (candCnt > 0 && Math.abs(o - cand) <= 0.5) candCnt++;else candCnt = 1;
+      cand = o;
+      if (candCnt >= 3) {
+        candCnt = 0;
+        motivo = "resincronizado";
+      } else {
+        valido = false;
+        motivo = "salto > 0,5 m en 10 min";
+      }
     }
-    if (valido) ultimo = o;
+    if (valido) {
+      ultimo = o;
+      if (motivo !== "resincronizado") candCnt = 0;
+    }
     val.push(ultimo);
     const h = ultimo;
     const j = Math.max(0, i - 6); // ventana de 1 h (6 lecturas)
